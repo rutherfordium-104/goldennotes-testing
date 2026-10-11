@@ -81,7 +81,7 @@
     box-shadow: 0 5px 5px rgba(0, 0, 0, 0.1);
 }
 h1, h2, h3, h4, h5, h6, p {
-    color: #333;
+    color: #ffffff;
     font-family: 'Montserrat'
 }
 input {
@@ -126,7 +126,6 @@ ah2 {
     width: 250px;
     height: 100px;
     margin: 10px;
-    align-items: center;
 }
 .dropdown {
   position: relative;
