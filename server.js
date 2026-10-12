@@ -256,8 +256,22 @@ const supabaseAdmin = createClient(
 /**
  * Profanity moderation: APILayer when configured, local bad-words fallback otherwise.
  */
-const BadWordsFilter = require("bad-words");
-const localProfanityFilter = new BadWordsFilter();
+const badWordsModule = require("bad-words");
+// bad-words v4 may expose the class as a named export rather than module.exports.
+const BadWordsFilter =
+    (badWordsModule && typeof badWordsModule.Filter === "function" && badWordsModule.Filter) ||
+    (badWordsModule && typeof badWordsModule.default === "function" && badWordsModule.default) ||
+    (typeof badWordsModule === "function" && badWordsModule);
+
+let localProfanityFilter = null;
+if (typeof BadWordsFilter === "function") {
+    localProfanityFilter = new BadWordsFilter();
+} else {
+    console.error("[moderation] Unsupported bad-words export shape; using built-in fallback word matcher.");
+}
+
+// Minimal fallback keeps startup alive if the dependency's export shape changes.
+const fallbackProfanityPattern = /\\b(fuck(?:er|ing|ed|s)?|shit(?:ty|s)?|bitch(?:es)?|asshole|bastard|damn|hell|crap)\\b/i;
 
 async function checkProfanity(text) {
     const input = String(text ?? "");
@@ -282,11 +296,15 @@ async function checkProfanity(text) {
         }
     }
 
-    const flagged = localProfanityFilter.isProfane(input);
+    const flagged = localProfanityFilter
+        ? localProfanityFilter.isProfane(input)
+        : fallbackProfanityPattern.test(input);
     return {
         bad_words_total: flagged ? 1 : 0,
         bad_words_list: flagged ? ["profanity"] : [],
-        censored_content: flagged ? localProfanityFilter.clean(input) : input,
+        censored_content: flagged
+            ? (localProfanityFilter ? localProfanityFilter.clean(input) : input.replace(fallbackProfanityPattern, (match) => "*".repeat(match.length)))
+            : input,
         provider: "local"
     };
 }
