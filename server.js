@@ -254,71 +254,99 @@ const supabaseAdmin = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY || ""
 );
 /**
- * Helper function to query the APILayer Bad Words API
+ * Profanity moderation: APILayer when configured, local bad-words fallback otherwise.
  */
+const BadWordsFilter = require("bad-words");
+const localProfanityFilter = new BadWordsFilter();
+
 async function checkProfanity(text) {
-    const myHeaders = new Headers();
-    myHeaders.append("apikey", process.env.APILAYER_API_KEY || "vE9Y2Q6zIaHsrgOBesx4LPjizE2V0ZRt");
-    myHeaders.append("Content-Type", "text/plain");
+    const input = String(text ?? "");
+    if (!input.trim()) return { bad_words_total: 0, bad_words_list: [], censored_content: input, provider: "none" };
 
-    const requestOptions = {
-        method: 'POST',
-        headers: myHeaders,
-        body: text
-    };
-
-    const response = await fetch("https://api.apilayer.com/bad_words?censor_character=*", requestOptions);
-
-    if (!response.ok) {
-        throw new Error(`APILayer service returned status ${response.status}`);
+    if (process.env.APILAYER_API_KEY) {
+        try {
+            const response = await fetch("https://api.apilayer.com/bad_words?censor_character=*", {
+                method: "POST",
+                headers: { apikey: process.env.APILAYER_API_KEY, "Content-Type": "text/plain" },
+                body: input,
+                signal: AbortSignal.timeout(5000)
+            });
+            if (!response.ok) throw new Error("APILayer returned HTTP " + response.status);
+            const result = await response.json();
+            if (typeof result.censored_content === "string" && Number.isFinite(Number(result.bad_words_total))) {
+                return { ...result, provider: "apilayer" };
+            }
+            throw new Error("APILayer returned an unexpected response format");
+        } catch (error) {
+            console.error("[moderation] APILayer failed; using local filter:", error.message);
+        }
     }
 
-    return await response.json();
+    const flagged = localProfanityFilter.isProfane(input);
+    return {
+        bad_words_total: flagged ? 1 : 0,
+        bad_words_list: flagged ? ["profanity"] : [],
+        censored_content: flagged ? localProfanityFilter.clean(input) : input,
+        provider: "local"
+    };
 }
 
-app.post('/api/profanity-webhook', async (req, res) => {
+async function incrementProfanityCount(userId, amount = 1) {
+    if (!userId || amount < 1) return;
+    const { data: userBg, error: readError } = await supabaseAdmin
+        .from("user-background").select("profanity-count").eq("uuid", userId).maybeSingle();
+    if (readError) throw readError;
+    const currentCount = Number(userBg?.["profanity-count"] || 0);
+    const { error: updateError } = await supabaseAdmin
+        .from("user-background").update({ "profanity-count": currentCount + amount }).eq("uuid", userId);
+    if (updateError) throw updateError;
+}
+
+app.post("/api/moderate-text", async (req, res) => {
     try {
-        // Supabase webhook payload format
-        const { type, record } = req.body; // 'record' contains the newly inserted/updated row
+        const authorization = req.headers.authorization || "";
+        const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+        if (!token) return res.status(401).json({ error: "Sign in to post content." });
+        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+        if (authError || !user) return res.status(401).json({ error: "Your session has expired. Please sign in again." });
+        if (typeof req.body?.text !== "string") return res.status(400).json({ error: "A text value is required." });
 
-        if (!record || !record.content || !record.user_id) {
-            return res.status(200).send('No content to check');
-        }
-
-        // 1. Scan the note content
-        const profanityResult = await checkProfanity(record.content);
-        const badWordsTotal = profanityResult.bad_words_total || 0;
-
-        if (badWordsTotal > 0) {
-            // 2. Fetch current profanity count
-            const { data: userBg } = await supabaseAdmin
-                .from('user-background')
-                .select('profanity-count')
-                .eq('uuid', record.user_id)
-                .single();
-
-            const currentCount = userBg ? (userBg['profanity-count'] || 0) : 0;
-
-            // 3. Increment profanity count
-            await supabaseAdmin
-                .from('user-background')
-                .update({ 'profanity-count': currentCount + badWordsTotal })
-                .eq('uuid', record.user_id);
-
-            // 4. Overwrite bad content in the notes table with censored version
-            await supabaseAdmin
-                .from('notes')
-                .update({ content: profanityResult.censored_content })
-                .eq('id', record.id);
-        }
-
-        return res.status(200).json({ success: true });
-    } catch (err) {
-        console.error('Webhook error:', err);
-        return res.status(500).send('Webhook handler error');
+        const result = await checkProfanity(req.body.text);
+        const flagged = Number(result.bad_words_total || 0) > 0;
+        if (flagged) await incrementProfanityCount(user.id, Number(result.bad_words_total) || 1);
+        return res.status(200).json({ flagged, censoredText: result.censored_content, provider: result.provider || "unknown" });
+    } catch (error) {
+        console.error("[moderation] Text check failed:", error);
+        return res.status(503).json({ error: "Content moderation is temporarily unavailable. Please try again." });
     }
 });
 
+/**
+ * Database webhook supports both the current corkboard schema (text/userid)
+ * and legacy payloads (content/user_id).
+ */
+app.post("/api/profanity-webhook", async (req, res) => {
+    try {
+        const { record } = req.body || {};
+        const text = record?.text ?? record?.content;
+        const userId = record?.userid ?? record?.user_id;
+        if (typeof text !== "string" || !text.trim() || !userId) {
+            return res.status(200).json({ success: true, skipped: true, reason: "No supported text/user fields" });
+        }
+        const result = await checkProfanity(text);
+        const badWordsTotal = Number(result.bad_words_total || 0);
+        if (badWordsTotal <= 0) return res.status(200).json({ success: true, flagged: false });
+        await incrementProfanityCount(userId, badWordsTotal);
+        const field = typeof record.text === "string" ? "text" : "content";
+        const { error: noteError } = await supabaseAdmin.from("notes")
+            .update({ [field]: result.censored_content }).eq("id", record.id);
+        if (noteError) throw noteError;
+        return res.status(200).json({ success: true, flagged: true, provider: result.provider });
+    } catch (error) {
+        console.error("[moderation] Database webhook failed:", error);
+        return res.status(500).send("Webhook handler error");
+    }
+});
 /**
  * POST /auth/searchusers?query=pattern
  * Alternatively supports passing { "query": "pattern" } in the JSON body
