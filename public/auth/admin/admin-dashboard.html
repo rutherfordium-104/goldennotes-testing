@@ -8,79 +8,80 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/auth/config.js"></script>
   <script src="/auth/theme.js"></script>
-  <link rel="stylesheet" href="/auth/admin/test.css">
-  <style>
-    .admin-tools{max-width:980px;margin:24px auto;padding:0 18px}
-    .panel-controller{margin:18px 0;padding:20px;border-radius:12px}
-    .admin-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;align-items:end}
-    .admin-form label{display:grid;gap:6px}
-    .admin-form input,.admin-form select,.admin-form textarea{width:100%;box-sizing:border-box;padding:10px;border-radius:7px;font:inherit}
-    .admin-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
-    #admin-status{white-space:pre-wrap;padding:12px;border-radius:8px;margin:18px 0}
-    #user-list{overflow:auto}
-    #user-list table{width:100%;border-collapse:collapse}
-    #user-list th,#user-list td{text-align:left;padding:9px;border-bottom:1px solid #7775;overflow-wrap:anywhere}
-    .danger-note{opacity:.85;font-size:.92rem}
-  </style>
+  <link rel="stylesheet" href="/master-combined.css">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="top-header">
     <a href="/" class="button-primary-panel">Homepage</a>
     <a href="/auth/dashboard.html" class="button-primary-panel">My Dashboard</a>
   </div>
-  <main class="admin-tools">
-    <h1 class="title">GoldenNotes Admin Dashboard</h1>
-    <p>Manage accounts using server-verified permissions. Actions are checked again by the server; hiding a button is not a security boundary.</p>
-    <div id="admin-status" role="status" aria-live="polite">Checking your session…</div>
+  <div class="container">
+    <main class="card page" style="max-width: 80%;">
+      <h1 class="title">GoldenNotes Admin Dashboard</h1>
+      <p>Manage accounts using server-verified permissions. Actions are checked again by the server; hiding a button is not a security boundary.</p>
+      <div class="card">
+        <p>Command execution status code:</p>
+        <strong id="admin-status" role="status" aria-live="polite">Checking your session…</strong>
+      </div>
 
-    <section class="panel-controller" id="user-management">
-      <div class="title-card"><h2>User Actions</h2><p>Ban, restore access, or change a user's rank.</p></div>
-      <div class="admin-form">
-        <label for="target-uuid">User UUID
-          <input id="target-uuid" autocomplete="off" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
-        </label>
-        <label for="ban-hours">Ban duration (hours)
-          <input id="ban-hours" type="number" min="1" max="8760" step="1" value="24">
-        </label>
-        <label for="ban-reason">Ban reason (required)
-          <textarea id="ban-reason" rows="3" maxlength="1000" placeholder="Explain why this account is being banned" required></textarea>
-        </label>
-        <label for="target-rank">New rank
-          <select id="target-rank"><option>Viewer</option><option>Moderator</option><option>Admin</option></select>
-        </label>
-      </div>
-      <div class="admin-actions">
-        <button class="button-primary-panel" id="ban-user" type="button">Ban User</button>
-        <button class="button-primary-panel" id="unban-user" type="button">Restore / Unban User</button>
-        <button class="button-primary-panel" id="change-user-rank" type="button">Change User Rank</button>
-        <button class="button-primary-panel" id="edit-users" type="button">Edit Users (focus form)</button>
-        <button class="button-primary-panel" id="delete-users" type="button">Delete Users</button>
-      </div>
-      <p class="danger-note">Permanent account deletion is intentionally not enabled in this dashboard: it can be irreversible and may leave related content behind. Use a temporary ban to restrict access instead.</p>
-    </section>
+      <section class="panel-controller" id="user-management">
+        <div class="title-card"><h2>User Actions</h2><p>Ban, restore access, or change a user's rank.</p></div>
+        <div class="admin-form">
+          <label for="target-uuid">User UUID
+            <input class="form-input" id="target-uuid" autocomplete="off" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+          </label>
+          <label for="ban-hours">Ban duration (hours)
+            <input class="form-input" id="ban-hours" type="number" min="1" max="8760" step="1" value="24">
+          </label>
+          <label for="ban-reason">Ban reason (required)
+            <textarea class="form-textarea" id="ban-reason" rows="3" maxlength="1000" placeholder="Explain why this account is being banned" required></textarea>
+          </label>
+          <label for="target-rank">New rank
+            <select style="max-width: 25%" class="form-select" id="target-rank"><option>Viewer</option><option>Moderator</option><option>Admin</option></select>
+          </label>
+        </div>
+        <div class="admin-actions">
+          <button class="generic_button" id="ban-user" type="button">Ban User</button>
+          <button class="generic_button" id="unban-user" type="button">Restore / Unban User</button>
+          <button class="generic_button" id="change-user-rank" type="button">Change User Rank</button>
+          <button class="generic_button" id="edit-users" type="button">Edit Users (focus form)</button>
+          <button class="generic_button" id="delete-users" type="button">Delete Users</button>
+        </div>
+        <p class="danger-note">Permanent account deletion is intentionally not enabled in this dashboard: it can be irreversible and may leave related content behind. Use a temporary ban to restrict access instead.</p>
+      </section>
 
-    <section class="panel-controller" id="management-tools">
-      <div class="title-card"><h2>Management Tools</h2><p>Load the available user profiles and their ranks.</p></div>
-      <div class="admin-actions">
-        <button class="button-primary-panel" id="lists-see" type="button">See Lists / Refresh Users</button>
-      </div>
-      <div id="user-list" aria-live="polite"></div>
-    </section>
-  </main>
+      <section class="panel-controller" id="management-tools">
+        <div class="title-card"><h2>Management Tools</h2><p>Load the available user profiles and their ranks.</p></div>
+        <div>
+          <button class="generic_button" id="lists-see" type="button">See Lists / Refresh Users</button>
+        </div>
+
+        <div id="user-list" aria-live="polite"></div>
+
+      </section>
+    </main>
+  </div>
 <script>
 (() => {
   const status = document.getElementById('admin-status');
   const userList = document.getElementById('user-list');
   let supabaseClient = window.GoldenNotesConfig?.initClient?.() || window.supabaseClient;
   let currentRank = null;
+  const targetElement = status
   const $ = (id) => document.getElementById(id);
   const setStatus = (message, isError = false) => {
     status.textContent = message;
     status.style.color = isError ? '#ff7777' : '';
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   };
 
   async function initClient() {
     if (!window.supabase || !window.GoldenNotesConfig || !supabaseClient) {
+      setStatus("Supabase config was not loaded. if you have access to the source code, check /auth/config.js, to learn more use F12 to enter the console.", true)
       throw new Error('Supabase config was not loaded. Check /auth/config.js.');
     }
     const { data: { session }, error } = await supabaseClient.auth.getSession();
@@ -103,13 +104,17 @@
       body: JSON.stringify({ action, sessionId: session.access_token, ...extra })
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data.success) throw new Error(data.error || 'Request failed (' + response.status + ').');
+    if (!response.ok || !data.success) {
+      setStatus("Request failed due to error: " + response.status);
+      throw new Error(data.error || 'Request failed (' + response.status + ').')
+    };
     return data;
   }
 
   function targetUuid() {
     const uuid = $('target-uuid').value.trim();
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uuid)) {
+      setStatus("Enter a valid user UUID first, or select from the menu")
       throw new Error('Enter a valid user UUID first.');
     }
     return uuid;
@@ -139,6 +144,7 @@
       const table = document.createElement('table');
       const thead = document.createElement('thead');
       const headRow = document.createElement('tr');
+
       ['UUID', 'Rank', 'Select'].forEach(label => {
         const th = document.createElement('th'); th.textContent = label; headRow.appendChild(th);
       });
@@ -150,7 +156,9 @@
         const rankCell = document.createElement('td'); rankCell.textContent = user.rank || 'Viewer';
         const selectCell = document.createElement('td');
         const button = document.createElement('button');
-        button.type = 'button'; button.className = 'button-primary-panel'; button.textContent = 'Use UUID';
+
+        button.type = 'button'; button.className = 'generic_button'; button.textContent = 'Use UUID';
+
         button.addEventListener('click', () => {
           $('target-uuid').value = user.uuid || '';
           $('target-rank').value = ['Viewer','Moderator','Admin'].includes(user.rank) ? user.rank : 'Viewer';
