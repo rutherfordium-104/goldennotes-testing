@@ -207,10 +207,32 @@
             return;
         }
 
-        uploadBtn.disabled = false;
-        uploadBtn.textContent = "Uploading...";
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session?.access_token) {
+            alert("Your session has expired. Please sign in again.");
+            return;
+        }
+
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = "Checking content...";
 
         try {
+            const response = await fetch('/api/moderate-text', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + session.access_token
+                },
+                body: JSON.stringify({ text: docTitle || fileInput.name })
+            });
+            const moderation = await response.json();
+            if (!response.ok) throw new Error(moderation.error || 'Moderation check failed');
+            if (moderation.flagged) {
+                window.location.assign('/auth/cursing.html');
+                return;
+            }
+
+            uploadBtn.textContent = "Uploading...";
             // Generate unique path inside the bucket
             const fileExt = fileInput.name.split('.').pop();
             const fileName = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
