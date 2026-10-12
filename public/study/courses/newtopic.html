@@ -223,6 +223,32 @@
 
         const subjectTitle = document.getElementById("subject").value;
         const editorContent = tinymce.get('topicData').getContent();
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session?.access_token) throw new Error("Please sign in again.");
+            const moderationResponse = await fetch('/api/moderate-text', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+                body: JSON.stringify({ text: [
+                    document.getElementById("author").value,
+                    subjectTitle,
+                    document.getElementById("topicName").value,
+                    document.getElementById("khubNumber").value,
+                    editorContent.replace(/<[^>]*>/g, ' ')
+                ].join(' ') })
+            });
+            const moderation = await moderationResponse.json();
+            if (!moderationResponse.ok) throw new Error(moderation.error || "Moderation check failed.");
+            if (moderation.flagged) {
+                window.location.assign('/auth/cursing.html');
+                return;
+            }
+        } catch (moderationError) {
+            alert(moderationError.message || "Could not check this topic. Please try again.");
+            submitBtn.disabled = !canWrite;
+            submitBtn.textContent = canWrite ? "Save Topic" : "Editor access required";
+            return;
+        }
 
         const record = {
             author: document.getElementById("author").value,
