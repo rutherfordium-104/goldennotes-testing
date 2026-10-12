@@ -337,9 +337,35 @@
 
             const body = note.querySelector('.note-body');
             body.addEventListener('input', debounce(async () => {
-                const userId = await getUserUuid();
+                const textToSave = body.innerText;
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (!session?.access_token) {
+                    showStatus('Please sign in again before editing notes.', 'error');
+                    return;
+                }
+                try {
+                    const response = await fetch('/api/moderate-text', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + session.access_token
+                        },
+                        body: JSON.stringify({ text: textToSave })
+                    });
+                    const moderation = await response.json();
+                    if (!response.ok) throw new Error(moderation.error || 'Moderation check failed');
+                    if (moderation.flagged) {
+                        window.location.assign('/auth/cursing.html');
+                        return;
+                    }
+                } catch (moderationError) {
+                    console.error('Moderation check failed:', moderationError);
+                    showStatus(moderationError.message || 'Could not check this note. Please try again.', 'error');
+                    return;
+                }
 
-                const updatePayload = { text: body.innerText };
+                const userId = await getUserUuid();
+                const updatePayload = { text: textToSave };
                 if (userId) {
                     updatePayload.userid = userId;
                 }
