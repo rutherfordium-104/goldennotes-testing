@@ -271,7 +271,7 @@ if (typeof BadWordsFilter === "function") {
 }
 
 // Minimal fallback keeps startup alive if the dependency's export shape changes.
-const fallbackProfanityPattern = /\\b(fuck(?:er|ing|ed|s)?|shit(?:ty|s)?|bitch(?:es)?|asshole|bastard|damn|hell|crap)\\b/i;
+const fallbackProfanityPattern = /\b(fuck(?:er|ing|ed|s)?|shit(?:ty|s)?|bitch(?:es)?|asshole|bastard|damn|hell|crap)\b/i;
 
 async function checkProfanity(text) {
     const input = String(text ?? "");
