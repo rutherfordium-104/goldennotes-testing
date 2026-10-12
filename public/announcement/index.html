@@ -246,6 +246,39 @@
         // Prepare data matching exact DB column names:
         // 'name', 'announcement-type', 'author', 'content'
         const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session?.access_token) {
+            statusMsg.innerText = 'Please sign in again before publishing.';
+            statusMsg.className = 'error';
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Publish Announcement';
+            return;
+        }
+
+        try {
+            const moderationResponse = await fetch('/api/moderate-text', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + session.access_token },
+                body: JSON.stringify({
+                    text: [
+                        document.getElementById('name').value,
+                        document.getElementById('content').value
+                    ].join(' ')
+                })
+            });
+            const moderation = await moderationResponse.json();
+            if (!moderationResponse.ok) throw new Error(moderation.error || 'Moderation check failed');
+            if (moderation.flagged) {
+                window.location.assign('/auth/cursing.html');
+                return;
+            }
+        } catch (moderationError) {
+            statusMsg.innerText = moderationError.message || 'Could not check this announcement. Please try again.';
+            statusMsg.className = 'error';
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Publish Announcement';
+            return;
+        }
+
         const announcementData = {
             'name': document.getElementById('name').value || 'NullNameFallback',
             'announcement-type': document.getElementById('announcement-type').value,
