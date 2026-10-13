@@ -21,7 +21,12 @@ const app = express();
 // Middleware (Declare body parsers and static assets BEFORE route handlers)
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true, limit: "5mb" }));
-app.use(express.static("public"));
+const publicStatic = express.static("public");
+app.use((req, res, next) => {
+    // This page must pass through the role-checking route below, not be served directly.
+    if (req.path === "/auth/admin/admin-dashboard.html") return next();
+    return publicStatic(req, res, next);
+});
 app.use(cookieParser()); // <-- Add this middleware
 app.use('/tinymce', express.static(path.join(__dirname, 'node_modules', 'tinymce')));
 
@@ -190,7 +195,7 @@ app.get('/auth/admin/admin-dashboard.html', async (req, res) => {
         // 1. Get the session token from cookies or Authorization header
         console.log("[server.js]: Admin dashboard GET request detected, authorizing user...");
         const token = req.cookies?.token || req.headers.authorization?.split(' ')[1];
-        console.log("[server.js | /admin-dashboard]: Token: ", token);
+        console.log("[server.js | /admin-dashboard]: Session token received.");
 
         if (!token) {
             console.log("[server.js | /admin-dashboard]: Invalid/No token provided, returning 401");
@@ -199,8 +204,8 @@ app.get('/auth/admin/admin-dashboard.html', async (req, res) => {
 
         // 2. Validate the token and get the user object from Supabase Auth
         const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-        console.log("[server.js | /admin-dashboard]: User: ", user);
-        console.log("[server.js | /admin-dashboard]: AuthError: ", authError);
+        console.log("[server.js | /admin-dashboard]: Auth user lookup completed.");
+        if (authError) console.log("[server.js | /admin-dashboard]: Authentication failed.");
 
         if (authError || !user) {
             console.log("[server.js | /admin-dashboard]: Invalid/Expired session, returning 401");
