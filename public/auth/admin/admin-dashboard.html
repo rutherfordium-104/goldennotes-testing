@@ -206,7 +206,7 @@
         const tr = document.createElement('tr');
         const uuidCell = document.createElement('td'); uuidCell.textContent = user.uuid || '';
         const rankCell = document.createElement('td'); rankCell.textContent = user.rank || 'Viewer';
-        const swearCell = document.createElement('td'); swearCell.textContent = fetchTable("user-background")
+        const swearCell = document.createElement('td'); swearCell.textContent = fetchTable("user-background", {uuid : user.uuid});
         const banCell = document.createElement('td'); banCell.textContent = banneduntill(uuid) || "No ban info"
         const selectCell = document.createElement('td');
         const button = document.createElement('button');
@@ -269,7 +269,7 @@
   }).catch(error => setStatus(error.message || String(error), true));
 })();
 
-  const badge = getElementById('badge');
+  const badge = document.getElementById('badge');
   $('badge').addEventListener('click', () => {
       const badgeOption = getElementById('badge-target');
       
