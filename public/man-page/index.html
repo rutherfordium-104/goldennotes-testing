@@ -66,6 +66,7 @@ window.addEventListener('keydown', (event) => {
   }
   window.history.replaceState(null, '', `/man-page/?page=${pageNumber}`);
   renderPageContent(pageNumber);
+  window.location.reload();
 });
 
     switch (page) {
