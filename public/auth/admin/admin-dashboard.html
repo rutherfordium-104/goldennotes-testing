@@ -40,6 +40,14 @@
           <label for="target-rank">New rank
             <select style="max-width: 25%" class="form-select" id="target-rank"><option>Viewer</option><option>Moderator</option><option>Admin</option></select>
           </label>
+          <label for="badge-target">Target</label>
+          <select style="max-width: 25%" class="form-select" id="badge-target">
+          <option>Betatester</option>
+          <option>Developer</option>
+          <option>Notetaker</option>
+          <option>Document Uploader</option>
+          </select>
+          </label>
         </div>
         <div class="admin-actions">
           <button class="generic_button" id="ban-user" type="button">Ban User</button>
@@ -47,6 +55,8 @@
           <button class="generic_button" id="change-user-rank" type="button">Change User Rank</button>
           <button class="generic_button" id="edit-users" type="button">Edit Users (focus form)</button>
           <button class="generic_button" id="delete-users" type="button">Delete Users</button>
+          <button class="generic_button" id="badge">Badges</button>
+
         </div>
         <p class="danger-note">Permanent account deletion is intentionally not enabled in this dashboard: it can be irreversible and may leave related content behind. Use a temporary ban to restrict access instead.</p>
       </section>
@@ -58,7 +68,6 @@
         </div>
 
         <div id="user-list" aria-live="polite"></div>
-
       </section>
     </main>
   </div>
@@ -259,6 +268,12 @@
     } catch (error) { setStatus(error.message || String(error), true); }
   }).catch(error => setStatus(error.message || String(error), true));
 })();
+
+  const badge = getElementById('badge');
+  $('badge').addEventListener('click', () => {
+      const badgeOption = getElementById('badge-target');
+      
+  });
 </script>
 </body>
 </html>
