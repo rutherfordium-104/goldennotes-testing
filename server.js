@@ -9,7 +9,7 @@ const { execSync } = require("child_process");
 const { createClient } = require("@supabase/supabase-js"); // 1. Import createClient
 
 const SUPABASE_URL = 'https://cqxlnmvmfkylozcdffxf.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxeGxubXZtZmt5bG96Y2RmZnhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3NDc4OTMsImV4cCI6MjEwNDMyMzg5M30.mpxEjcWdD9Vy0WsHRL7O8n1fWfnKInsBmOgaYsiv_38';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
 
 // Initialize inside block scope to avoid global collision
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -21,7 +21,12 @@ const app = express();
 // Middleware (Declare body parsers and static assets BEFORE route handlers)
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true, limit: "5mb" }));
-app.use(express.static("public"));
+const publicStatic = express.static("public");
+app.use((req, res, next) => {
+    // This page must pass through the role-checking route below, not be served directly.
+    if (req.path === "/auth/admin/admin-dashboard.html") return next();
+    return publicStatic(req, res, next);
+});
 app.use(cookieParser()); // <-- Add this middleware
 app.use('/tinymce', express.static(path.join(__dirname, 'node_modules', 'tinymce')));
 
@@ -185,12 +190,15 @@ app.get("/public", (req, res) => res.redirect("/"));
 app.get("/man-page/index.html", (req, res) => sendFileOrError(res, '/man-page/index.html', 'man-page/index.html'));
 app.get("/mod-page/index.html", (req, res) => sendFileOrError(res, '/mod-page/index.html', 'mod-page/index.html'));
 app.get("/test/index.html", (req, res) => sendFileOrError(res, '/test/index.html', 'test/index.html'));
+// Keep the dashboard's existing navigation URL mapped to the protected route.
+app.get("/admin-dashboard.html", (req, res) => res.redirect(302, "/auth/admin/admin-dashboard.html"));
+
 app.get('/auth/admin/admin-dashboard.html', async (req, res) => { 
     try {
         // 1. Get the session token from cookies or Authorization header
         console.log("[server.js]: Admin dashboard GET request detected, authorizing user...");
         const token = req.cookies?.token || req.headers.authorization?.split(' ')[1];
-        console.log("[server.js | /admin-dashboard]: Token: ", token);
+        console.log("[server.js | /admin-dashboard]: Session token received.");
 
         if (!token) {
             console.log("[server.js | /admin-dashboard]: Invalid/No token provided, returning 401");
@@ -199,8 +207,8 @@ app.get('/auth/admin/admin-dashboard.html', async (req, res) => {
 
         // 2. Validate the token and get the user object from Supabase Auth
         const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-        console.log("[server.js | /admin-dashboard]: User: ", user);
-        console.log("[server.js | /admin-dashboard]: AuthError: ", authError);
+        console.log("[server.js | /admin-dashboard]: Auth user lookup completed.");
+        if (authError) console.log("[server.js | /admin-dashboard]: Authentication failed.");
 
         if (authError || !user) {
             console.log("[server.js | /admin-dashboard]: Invalid/Expired session, returning 401");
@@ -598,7 +606,12 @@ app.post('/auth/signup-provider/posthttps', async (req, res) => {
         }
 
         // 2. Query AbstractAPI for email reputation
-        const apiKey = 'a84aa43c77014faba9f91654a2f8b0b3';
+        const apiKey = process.env.ABSTRACT_API_KEY;
+        if (!apiKey) {
+            return res.status(503).json({
+                error: { http_code: 503, message: "Email verification is temporarily unavailable." }
+            });
+        }
         const apiUrl = `https://emailreputation.abstractapi.com/v1/?api_key=${apiKey}&email=${encodeURIComponent(email)}`;
 
         const apiResponse = await fetch(apiUrl);
@@ -712,16 +725,96 @@ app.post('/auth/moderator/actionpost', async (req, res) => {
         }
 
         if (action === "list-users") {
-            const { data, error } = await supabaseAdmin
+            const { data: profiles, error: profileError } = await supabaseAdmin
                 .from("user-background")
-                .select("uuid, rank")
+                .select("uuid, rank, profanity-count")
                 .order("rank", { ascending: true })
                 .limit(100);
-            if (error) {
-                console.error("[moderator/actionpost] list-users failed:", error.message);
-                return res.status(500).json({ error: "Could not load users." });
+            if (profileError) {
+                console.error("[moderator/actionpost] list-users profile query failed:", profileError.message);
+                return res.status(500).json({ error: "Could not load user profiles." });
             }
-            return res.json({ success: true, users: data || [] });
+
+            const { data: authData, error: authListError } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+            if (authListError) {
+                console.error("[moderator/actionpost] list-users Auth query failed:", authListError.message);
+                return res.status(500).json({ error: "Could not load Auth ban information." });
+            }
+            const authById = new Map((authData.users || []).map(authUser => [authUser.id, authUser]));
+            const users = (profiles || []).map(profile => {
+                const authUser = authById.get(profile.uuid);
+                return {
+                    uuid: profile.uuid,
+                    rank: profile.rank || "Viewer",
+                    profanity_count: Number(profile["profanity-count"] || 0),
+                    banned_until: authUser?.banned_until || null
+                };
+            });
+            return res.json({ success: true, users });
+        }
+
+        if (action === "list-content") {
+            const [{ data: documents, error: documentsError }, { data: studyGuides, error: studyError }] = await Promise.all([
+                supabaseAdmin.from("documents").select("id, name, author, file_path"),
+                supabaseAdmin.from("study").select("id, name, author, sg")
+            ]);
+            if (documentsError || studyError) {
+                console.error("[moderator/actionpost] Content list failed:", documentsError?.message || studyError?.message);
+                return res.status(500).json({ error: "Could not load documents and study guides. Check table permissions/schema." });
+            }
+            return res.json({ success: true, documents: documents || [], studyGuides: studyGuides || [] });
+        }
+
+        if (action === "delete-content") {
+            const { contentType, itemId } = req.body || {};
+            if (!["document", "study"].includes(contentType) ||
+                (typeof itemId !== "string" && typeof itemId !== "number") ||
+                String(itemId).trim().length === 0 || String(itemId).length > 100) {
+                return res.status(400).json({ error: "A valid content type and item ID are required." });
+            }
+
+            if (contentType === "document") {
+                const { data: document, error: documentError } = await supabaseAdmin
+                    .from("documents").select("id, file_path").eq("id", itemId).maybeSingle();
+                if (documentError) {
+                    console.error("[moderator/actionpost] Document lookup failed:", documentError.message);
+                    return res.status(500).json({ error: "Could not look up the document." });
+                }
+                if (!document) return res.status(404).json({ error: "Document not found." });
+
+                if (document.file_path) {
+                    const { error: storageError } = await supabaseAdmin.storage
+                        .from("documents").remove([document.file_path]);
+                    if (storageError) {
+                        console.error("[moderator/actionpost] Storage deletion failed:", storageError.message);
+                        return res.status(500).json({ error: "Could not delete the stored file; the document record was kept." });
+                    }
+                }
+
+                const { error: deleteError } = await supabaseAdmin
+                    .from("documents").delete().eq("id", itemId);
+                if (deleteError) {
+                    console.error("[moderator/actionpost] Document row deletion failed:", deleteError.message);
+                    return res.status(500).json({ error: "The file was removed, but its database record could not be deleted." });
+                }
+                return res.json({ success: true, message: "Document and stored file deleted." });
+            }
+
+            const { data: studyGuide, error: studyLookupError } = await supabaseAdmin
+                .from("study").select("id").eq("id", itemId).maybeSingle();
+            if (studyLookupError) {
+                console.error("[moderator/actionpost] Study guide lookup failed:", studyLookupError.message);
+                return res.status(500).json({ error: "Could not look up the study guide." });
+            }
+            if (!studyGuide) return res.status(404).json({ error: "Study guide not found." });
+
+            const { error: studyDeleteError } = await supabaseAdmin
+                .from("study").delete().eq("id", itemId);
+            if (studyDeleteError) {
+                console.error("[moderator/actionpost] Study guide deletion failed:", studyDeleteError.message);
+                return res.status(500).json({ error: "Could not delete the study guide." });
+            }
+            return res.json({ success: true, message: "Study guide deleted." });
         }
 
         if (!["ban", "unban", "change-rank"].includes(action)) {
