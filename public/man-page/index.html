@@ -53,23 +53,6 @@
     const URLParams = new URLSearchParams(window.location.search);
     const page = URLParams.get("page");
 
-    let pageNumber = parseInt(urlParams.get('page'), 10) || 1;
-
-renderPageContent(pageNumber);
-window.addEventListener('keydown', (event) => {
-  if (event.key === 'ArrowRight') {
-    pageNumber += 1;
-  } else if (event.key === 'ArrowLeft') {
-    if (pageNumber <= 1) return;
-    pageNumber -= 1;
-  } else {
-    return; // Do nothing for other keys
-  }
-  
-  window.history.replaceState(null, '', `/man-page/?page=${pageNumber}`);
-  
-  renderPageContent(pageNumber); 
-});
     switch (page) {
         case "1":
             title.innerText = "Ranks";
