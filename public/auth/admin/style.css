@@ -4,13 +4,15 @@ table {
     margin: 20px 0;
     font-family: sans-serif;
     font-size: 14px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     border-radius: 8px 8px 0 0;
     overflow: hidden;
+    color: var(--main-text, #e5e7eb);
+    background-color: var(--bg-card, #14213d);
 }
 
 table thead tr {
-    background-color: #FF9F43FF;
+    background-color: #ff9f43;
     color: #ffffff;
     text-align: left;
     font-weight: bold;
@@ -19,19 +21,32 @@ table thead tr {
 table th,
 table td {
     padding: 12px 16px;
+    vertical-align: middle;
+    overflow-wrap: anywhere;
 }
 
 table tbody tr {
-    border-bottom: 1px solid #e5e7eb;
+    background-color: var(--bg-card, #14213d);
+    color: var(--main-text, #e5e7eb);
+    border-bottom: 1px solid var(--border-color, #334155);
 }
 
 table tbody tr:nth-of-type(even) {
-    background-color: #f9fafb;
+    background-color: #1b2a49;
+    color: #f1f5f9;
 }
 
 table tbody tr:hover {
-    background-color: #f3f4f6;
-    cursor: pointer;
+    background-color: #263858;
+    color: #ffffff;
+}
+
+table tbody td {
+    color: inherit;
+}
+
+table tbody button {
+    color: var(--main-text, #f8fafc);
 }
 
 .page {
@@ -50,4 +65,6 @@ table tbody tr:hover {
 .content-management-row button { flex-shrink: 0; }
 @media (max-width: 600px) {
   .content-management-row { align-items: flex-start; flex-direction: column; }
+  #user-list { overflow-x: auto; }
+  #user-list table { min-width: 600px; }
 }
