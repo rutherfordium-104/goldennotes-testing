@@ -258,160 +258,161 @@
 </div>
 
 <script>
-    const SUPABASE_URL = 'https://cqxlnmvmfkylozcdffxf.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxeGxubXZtZmt5bG96Y2RmZnhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3NDc4OTMsImV4cCI6MjEwNDMyMzg5M30.mpxEjcWdD9Vy0WsHRL7O8n1fWfnKInsBmOgaYsiv_38';
+(() => {
+  'use strict';
+  const SUPABASE_URL = 'https://cqxlnmvmfkylozcdffxf.supabase.co';
+  const SUPABASE_ANON_KEY = window.GoldenNotesConfig?.KEY || '';
+  const supabaseClient = window.GoldenNotesConfig?.initClient?.()
+    || (window.supabase && window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
 
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const $ = (id) => document.getElementById(id);
+  const showText = (el, text, color) => {
+    if (!el) return;
+    el.textContent = text;
+    if (color) el.style.color = color;
+  };
 
-    async function search(query) {
-        const searchbar = document.getElementById('search-input');
-        const usersec = document.getElementById('usersec');
-        if (searchbar) searchbar.value = query;
+  async function searchUsers(query) {
+    const usersec = $('usersec');
+    if (!usersec) return;
+    usersec.replaceChildren();
+    const loading = document.createElement('p');
+    loading.textContent = 'Searching…';
+    usersec.appendChild(loading);
 
-        usersec.innerHTML = '<p style="margin-top:15px; color: var(--muted-text);">Searching...</p>';
+    try {
+      const response = await fetch('/auth/searchusers?query=' + encodeURIComponent(query), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Failed to search users.');
+      usersec.replaceChildren();
 
-        try {
-            // Fetch users from Express backend
-            const response = await fetch(`/auth/searchusers?query=${encodeURIComponent(query)}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
+      if (!Array.isArray(result.users) || result.users.length === 0) {
+        const empty = document.createElement('p');
+        empty.textContent = 'No users found matching that query.';
+        usersec.appendChild(empty);
+        return;
+      }
 
-            const result = await response.json();
+      result.users.forEach((user) => {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'card user-card-item';
+        const title = document.createElement('h3');
+        const email = document.createElement('p');
+        title.textContent = user.user_metadata?.username || (user.email || '').split('@')[0] || 'User';
+        email.textContent = user.email || 'No email available';
+        card.append(title, email);
+        card.addEventListener('click', () => {
+          if (user.id) location.href = '/dashboard/view/user?id=' + encodeURIComponent(user.id);
+        });
+        usersec.appendChild(card);
+      });
+    } catch (error) {
+      usersec.replaceChildren();
+      const message = document.createElement('p');
+      message.style.color = 'var(--danger)';
+      message.textContent = 'Could not search users: ' + (error.message || String(error));
+      usersec.appendChild(message);
+    }
+  }
 
-            if (!response.ok) {
-                throw new Error(result.error || 'Failed to search users');
-            }
-
-            usersec.innerHTML = '';
-
-            if (!result.users || result.users.length === 0) {
-                usersec.innerHTML = '<p style="margin-top:15px; color: var(--muted-text);">No users found matching query.</p>';
-                return;
-            }
-
-            // Render each matching user inside a .card container
-            result.users.forEach(user => {
-                const userCard = document.createElement('div');
-                userCard.className = 'card user-card-item';
-
-                const username = user.user_metadata?.username || user.email.split('@')[0];
-
-                userCard.innerHTML = `
-                    <h3>${username}</h3>
-                    <p>${user.email}</p>
-                `;
-
-                // Redirect on click to /dashboard/view/user?id=UUID
-                userCard.addEventListener('click', () => {
-                    window.location.href = `/dashboard/view/user?id=${encodeURIComponent(user.id)}`;
-                });
-
-                usersec.appendChild(userCard);
-            });
-
-        } catch (err) {
-            console.error('Search error:', err);
-            usersec.innerHTML = `<p style="margin-top:15px; color: var(--danger);">Error: ${err.message}</p>`;
-        }
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (!supabaseClient) {
+      showText($('display-username'), 'Could not load sign-in service.');
+      return;
     }
 
-    document.addEventListener('DOMContentLoaded', async () => {
-        const usernameEl = document.getElementById('display-username');
-        const emailEl = document.getElementById('display-email');
-        const idEl = document.getElementById('display-id');
-        const logoutBtn = document.getElementById('logout-btn');
+    const logoutBtn = $('logout-btn');
+    const searchForm = document.querySelector('form[action="/dashboard"]');
+    const searchInput = $('search-input');
+    const popup = $('welcomePopup');
+    const yesBtn = $('yesPopupBtn');
+    const laterBtn = $('closePopupBtn');
 
-        document.getElementById("redirect").addEventListener('click', () => {
-            window.location.href = "/dashboard?search=@";
-        })
+    const redirectBtn = $('redirect');
+    redirectBtn?.addEventListener('click', () => { location.href = '/dashboard?search=@'; });
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const welcomePopup = document.getElementById('welcomePopup');
-            const yesPopupBtn = document.getElementById('yesPopupBtn');
-            const closePopupBtn = document.getElementById('closePopupBtn');
+    try {
+      const { data: { session }, error } = await supabaseClient.auth.getSession();
+      if (error || !session?.user) {
+        location.href = '/login';
+        return;
+      }
 
-            // 1. Check if the user has cached their "Yes" answer before
-            const hasReadRules = localStorage.getItem('rules_accepted');
+      const user = session.user;
+      showText($('display-email'), user.email || 'Not available');
+      showText($('display-id'), user.id || 'Not available');
+      showText($('display-username'), user.user_metadata?.username || user.email?.split('@')[0] || 'No username set');
 
-            // 2. Only show the popup if they HAVEN'T clicked Yes before
-            if (!hasReadRules) {
-                welcomePopup.style.display = 'flex';
-            }
+      // Keep first-time rules acknowledgement separate for each signed-in account.
+      const acceptedKey = 'rules_accepted:' + user.id;
+      try {
+        if (popup && !localStorage.getItem(acceptedKey)) popup.style.display = 'flex';
+      } catch (_) {
+        if (popup) popup.style.display = 'flex';
+      }
 
-            // 3. If they click YES: Cache the setting, then redirect
-            yesPopupBtn.addEventListener('click', (event) => {
-                event.preventDefault(); // Stop the instant link jump
-                localStorage.setItem('rules_accepted', 'true'); // Save to browser cache
-                window.location.href = '/man-page/rules'; // Execute the redirect
-            });
+      yesBtn?.addEventListener('click', (event) => {
+        event.preventDefault();
+        try { localStorage.setItem(acceptedKey, 'true'); } catch (_) {}
+        location.href = '/rules.html';
+      });
+      laterBtn?.addEventListener('click', () => {
+        if (popup) popup.style.display = 'none';
+      });
 
-            // 4. If they click LATER: Close the card without caching anything
-            closePopupBtn.addEventListener('click', () => {
-                welcomePopup.style.display = 'none';
-            });
-
-        async function loadUserProfile() {
-            const { data: { session }, error } = await supabaseClient.auth.getSession();
-
-            if (error || !session) {
-                console.warn('No active session found.');
-                window.location.href = '/login';
-                return;
-            }
-
-            const user = session.user;
-
-            if (emailEl) emailEl.textContent = user.email;
-            if (idEl) idEl.textContent = user.id;
-            if (usernameEl) usernameEl.textContent = user.user_metadata?.username || 'No username set';
+      searchForm?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const query = searchInput?.value.trim() || '';
+        if (query) {
+          const url = new URL(location.href);
+          url.searchParams.set('search', query);
+          history.replaceState(null, '', url);
+          searchUsers(query);
         }
+      });
 
-        await loadUserProfile();
+      const params = new URLSearchParams(location.search);
+      const query = params.get('search');
+      if (query?.trim()) {
+        if (searchInput) searchInput.value = query.trim();
+        await searchUsers(query.trim());
+      }
 
-        supabaseClient.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_OUT' || !session) {
-                window.location.href = '/login';
-            }
-        });
-
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', async () => {
-                await supabaseClient.auth.signOut();
-                window.location.href = '/login';
-            });
+      logoutBtn?.addEventListener('click', async () => {
+        logoutBtn.disabled = true;
+        const { error: signOutError } = await supabaseClient.auth.signOut();
+        if (signOutError) {
+          logoutBtn.disabled = false;
+          alert('Could not log out: ' + signOutError.message);
+          return;
         }
+        location.href = '/login';
+      });
 
-        // Trigger search if "search" query parameter exists in URL
-        const urlp = new URLSearchParams(window.location.search);
-        const searchQuery = urlp.get('search');
-        if (searchQuery && searchQuery.trim() !== '') {
-            search(searchQuery.trim());
+      supabaseClient.auth.onAuthStateChange((event, nextSession) => {
+        if (event === 'SIGNED_OUT' || !nextSession) location.href = '/login';
+      });
+
+      // The server protects this destination; never redirect to a guessed path.
+      $('adminBtn')?.addEventListener('click', async (event) => {
+        event.preventDefault();
+        const { data: { session: activeSession }, error: sessionError } = await supabaseClient.auth.getSession();
+        if (sessionError || !activeSession) {
+          alert('Your session expired. Please sign in again.');
+          location.href = '/login';
+          return;
         }
-
-        document.getElementById('adminBtn').addEventListener('click', async () => {
-            try {
-                // 1. Get the current active session from Supabase client
-                const { data: { session }, error } = await supabaseClient.auth.getSession();
-
-                if (error || !session) {
-                    alert('No active session found. Please log in first.');
-                    window.location.href = '/login';
-                    return;
-                }
-
-                // 2. Set the access token into a cookie named 'token'
-                // path=/ makes it available to all routes, max-age sets it for 1 day (86400 seconds)
-                document.cookie = `token=${session.access_token}; path=/; max-age=86400; SameSite=Lax`;
-
-                // 3. Redirect to your admin dashboard route
-                window.location.href = '/admin-dashboard.html';
-
-            } catch (err) {
-                console.error('Error redirecting to admin:', err);
-            }
-        });
-    });
+        location.href = '/auth/admin/admin-dashboard.html';
+      });
+    } catch (error) {
+      showText($('display-username'), 'Dashboard failed to load: ' + (error.message || String(error)), 'var(--danger)');
+    }
+  });
+})();
 </script>
 
 </body>
