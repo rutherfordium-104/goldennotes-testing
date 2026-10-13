@@ -42,10 +42,16 @@
           </label>
           <label for="badge-target">Target</label>
           <select style="max-width: 25%" class="form-select" id="badge-target">
-          <option>Betatester</option>
-          <option>Developer</option>
-          <option>Notetaker</option>
-          <option>Document Uploader</option>
+
+            <!--WARNING: DO NOT CHANGE THE OPTIONS-->
+            <!--The options below are tied straight to the Supabase user-background table
+            changing any of them will lead to unwanted results, note that they are also CASE-sENSItive
+            meaning even a lowercase letter can destroy EVERYTHING, if your rank is not set to either
+            of the four, it will throw an illegal command-->
+          <option>Viewer</option>
+          <option>Editor</option>
+          <option>Moderator</option>
+          <option>Admin</option>
           </select>
           </label>
         </div>

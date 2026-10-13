@@ -100,6 +100,82 @@
             color: var(--muted-text);
             font-size: 13px;
         }
+
+        /* Popup Overlay (Darkened Background) */
+        .popup-overlay {
+            display: none;             /* Automatically visible on load */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); /* 60% dim effect */
+            z-index: 9999;             /* Sits above everything else */
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* The Modal Card Container */
+        .popup-card {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+
+        .popup-card h2 {
+            margin-top: 0;
+            color: #333333;
+        }
+
+        .popup-card p {
+            color: #555555;
+            line-height: 1.5;
+            margin-bottom: 25px;
+        }
+
+        /* Button Layout */
+        .popup-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            text-decoration: none; /* Removes underline from 'Yes' link */
+            transition: background-color 0.2s;
+        }
+
+        /* 'Yes' Button Styles */
+        .btn-yes {
+            background-color: #ffc107; /* Golden theme color */
+            color: #000000;
+        }
+
+        .btn-yes:hover {
+            background-color: #e0a800;
+        }
+
+        /* 'Maybe Later' Button Styles */
+        .btn-later {
+            background-color: #e0e0e0;
+            color: #333333;
+        }
+
+        .btn-later:hover {
+            background-color: #d5d5d5;
+        }
+
     </style>
 </head>
 <body>
@@ -165,6 +241,19 @@
     <div class="card">
         <h2>Admin</h2>
         <a href="/auth/admin/admin-dashboard.html" id="adminBtn" class="btn btn-secondary">Dashboard</a>
+    </div>
+</div>
+
+<!-- The GoldenNotes Welcome Popup -->
+<div id="welcomePopup" class="popup-overlay">
+    <div class="popup-card">
+        <h2>Welcome to GoldenNotes! 📝</h2>
+        <p>Hey there! Thanks for signing up to GoldenNotes, before you start doing things, would you mind reading the rules?</p>
+        <div class="popup-buttons">
+            <!-- Changed href to '#' and added id="yesPopupBtn" -->
+            <a href="#" id="yesPopupBtn" class="btn btn-yes">Yes</a>
+            <button id="closePopupBtn" class="btn btn-later">Maybe later</button>
+        </div>
     </div>
 </div>
 
@@ -236,6 +325,31 @@
         document.getElementById("redirect").addEventListener('click', () => {
             window.location.href = "/dashboard?search=@";
         })
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const welcomePopup = document.getElementById('welcomePopup');
+            const yesPopupBtn = document.getElementById('yesPopupBtn');
+            const closePopupBtn = document.getElementById('closePopupBtn');
+
+            // 1. Check if the user has cached their "Yes" answer before
+            const hasReadRules = localStorage.getItem('rules_accepted');
+
+            // 2. Only show the popup if they HAVEN'T clicked Yes before
+            if (!hasReadRules) {
+                welcomePopup.style.display = 'flex';
+            }
+
+            // 3. If they click YES: Cache the setting, then redirect
+            yesPopupBtn.addEventListener('click', (event) => {
+                event.preventDefault(); // Stop the instant link jump
+                localStorage.setItem('rules_accepted', 'true'); // Save to browser cache
+                window.location.href = '/man-page/rules'; // Execute the redirect
+            });
+
+            // 4. If they click LATER: Close the card without caching anything
+            closePopupBtn.addEventListener('click', () => {
+                welcomePopup.style.display = 'none';
+            });
 
         async function loadUserProfile() {
             const { data: { session }, error } = await supabaseClient.auth.getSession();
