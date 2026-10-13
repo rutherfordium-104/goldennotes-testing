@@ -58,12 +58,14 @@
         if (event.key === 'ArrowRight') {
             pageNumber += 1
               window.history.replaceState(null, '', `/man-page/?page=${pageNumber}`);
+                renderPageContent(pageNumber); 
         }
     });
     window.addEventListener('keydown', (event) => {
         if (event.key === 'ArrowLeft') {
             pageNumber -= 1
               window.history.replaceState(null, '', `/man-page/?page=${pageNumber}`);
+                renderPageContent(pageNumber); 
         }
     });
 
