@@ -37,3 +37,17 @@ table tbody tr:hover {
 .page {
     gap: 16px;
 }
+
+#content-list { margin-top: 1rem; }
+.content-management-section { margin-top: 1.25rem; }
+.content-management-list { display: grid; gap: .65rem; }
+.content-management-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: .85rem 1rem; border: 1px solid var(--border-color, #475569);
+  border-radius: .75rem; overflow-wrap: anywhere;
+}
+.content-management-row p { margin: .35rem 0 0; opacity: .75; }
+.content-management-row button { flex-shrink: 0; }
+@media (max-width: 600px) {
+  .content-management-row { align-items: flex-start; flex-direction: column; }
+}
