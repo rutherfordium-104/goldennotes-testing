@@ -41,7 +41,7 @@
             <select style="max-width: 25%" class="form-select" id="target-rank"><option>Viewer</option><option>Moderator</option><option>Admin</option></select>
           </label>
           <label for="badge-target">Target</label>
-          <select style="max-width: 25%" class="form-select" id=""badge-target">
+          <select style="max-width: 25%" class="form-select" id="badge-target">
           <option>Betatester</option>
           <option>Developer</option>
           <option>Notetaker</option>
@@ -221,8 +221,10 @@
     } catch (error) { setStatus(error.message || String(error), true); }
   }).catch(error => setStatus(error.message || String(error), true));
 })();
+
   const badge = getElementById('badge');
   $('badge').addEventListener('click', () => {
+      const badgeOption = getElementById('badge-target');
       
   });
 </script>

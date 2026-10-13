@@ -52,6 +52,14 @@
 
     const URLParams = new URLSearchParams(window.location.search);
     const page = URLParams.get("page");
+    let pageNumber = 1
+    
+    window.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowLeft') {
+            pageNumber += 1
+              window.history.replaceState(null, '', `/man-page?page=${pageNumber}`);
+        }
+    });
 
     switch (page) {
         case "1":
