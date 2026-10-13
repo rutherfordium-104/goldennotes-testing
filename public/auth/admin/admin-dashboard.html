@@ -69,28 +69,32 @@
 
         <div id="user-list" aria-live="polite"></div>
       </section>
+
+      <section class="panel-controller" id="content-management">
+        <div class="title-card"><h2>Content Management</h2><p>Moderators and admins can remove uploaded documents or study guides.</p></div>
+        <button class="generic_button" id="refresh-content" type="button">Refresh Content</button>
+        <div id="content-list" aria-live="polite">Loading documents and study guides…</div>
+      </section>
     </main>
   </div>
 <script>
 (() => {
-  const status = document.getElementById('admin-status');
-  const userList = document.getElementById('user-list');
-  let supabaseClient = window.GoldenNotesConfig?.initClient?.() || window.supabaseClient;
-  let currentRank = null;
-  const targetElement = status
+  'use strict';
   const $ = (id) => document.getElementById(id);
-  const setStatus = (message, isError = false) => {
+  const status = $('admin-status');
+  const userList = $('user-list');
+  const contentList = $('content-list');
+  const supabaseClient = window.GoldenNotesConfig?.initClient?.() || window.supabaseClient;
+  let currentRank = null;
+
+  function setStatus(message, isError = false) {
     status.textContent = message;
     status.style.color = isError ? '#ff7777' : '';
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
-  };
+  }
 
   async function initClient() {
     if (!window.supabase || !window.GoldenNotesConfig || !supabaseClient) {
-      setStatus("Supabase config was not loaded. if you have access to the source code, check /auth/config.js, to learn more use F12 to enter the console.", true)
+      setStatus('Supabase config was not loaded. Check /auth/config.js.', true);
       throw new Error('Supabase config was not loaded. Check /auth/config.js.');
     }
     const { data: { session }, error } = await supabaseClient.auth.getSession();
@@ -101,31 +105,6 @@
     return session;
   }
 
-  async function fetchTable(tableName, searchFor = undefined) {
-    try {
-      let query = supabaseClient.from(tableName).select('*');
-
-      if (searchFor && typeof searchFor === 'object') {
-        Object.keys(searchFor).forEach(key => {
-          query = query.eq(key, searchFor[key]);
-        });
-
-        const { data, error } = await query.maybeSingle();
-        if (error) throw error;
-        return data;
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      return data;
-
-    } catch (error) {
-      console.error(`Error fetching from table "${tableName}":`, error.message);
-      return null;
-    }
-  }
-
-
   async function api(action, extra = {}) {
     const { data: { session }, error } = await supabaseClient.auth.getSession();
     if (error || !session) throw new Error('Your session expired. Please sign in again.');
@@ -135,20 +114,16 @@
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + session.access_token
       },
-      body: JSON.stringify({ action, sessionId: session.access_token, ...extra })
+      body: JSON.stringify({ action, ...extra })
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data.success) {
-      setStatus("Request failed due to error: " + response.status);
-      throw new Error(data.error || 'Request failed (' + response.status + ').')
-    };
+    if (!response.ok || !data.success) throw new Error(data.error || 'Request failed (' + response.status + ').');
     return data;
   }
 
   function targetUuid() {
     const uuid = $('target-uuid').value.trim();
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uuid)) {
-      setStatus("Enter a valid user UUID first, or select from the menu")
       throw new Error('Enter a valid user UUID first.');
     }
     return uuid;
@@ -160,72 +135,137 @@
       if (confirmation && !confirm(confirmation)) return;
       const result = await api(action, { targetUuid: uuid, ...extra });
       setStatus(result.message || 'Action completed successfully.');
-      if (action === 'ban' || action === 'unban' || action === 'delete-user') await loadUsers();
+      if (['ban', 'unban', 'delete-user'].includes(action)) await loadUsers();
     } catch (error) {
       setStatus(error.message || String(error), true);
     }
   }
 
-  async function banneduntill(uuid) {
-    const { data, error } =
-            await supabaseAdmin.auth.admin.getUserById(uuid);
-
-    if (error) throw error;
-
-    const bannedUntil = data.user?.banned_until;
-
-    if (!bannedUntil) return null;
-
-    const remainingMs =
-            new Date(bannedUntil).getTime() - Date.now();
-
-    if (remainingMs <= 0) return 0;
-
-    return remainingMs / (1000 * 60 * 60);
+  function formatBanHours(bannedUntil) {
+    if (!bannedUntil) return 'Not banned';
+    const ms = new Date(bannedUntil).getTime() - Date.now();
+    if (!Number.isFinite(ms) || ms <= 0) return 'Not banned';
+    const totalMinutes = Math.ceil(ms / 60000);
+    return Math.floor(totalMinutes / 60) + 'h ' + (totalMinutes % 60) + 'm';
   }
 
   async function loadUsers() {
+    userList.textContent = 'Loading users…';
     try {
       const result = await api('list-users');
       const users = result.users || [];
       userList.replaceChildren();
       if (!users.length) {
         userList.textContent = 'No user profiles returned.';
+        setStatus('No user profiles returned.');
         return;
       }
       const table = document.createElement('table');
       const thead = document.createElement('thead');
       const headRow = document.createElement('tr');
-
-      ['UUID', 'Rank', 'Ban hours left', 'Profanity count (cursing/swear)', 'Select'].forEach(label => {
-        const th = document.createElement('th'); th.textContent = label; headRow.appendChild(th);
+      ['UUID', 'Rank', 'Ban time remaining', 'Profanity count', 'Select'].forEach(label => {
+        const th = document.createElement('th');
+        th.textContent = label;
+        headRow.appendChild(th);
       });
-      thead.appendChild(headRow); table.appendChild(thead);
+      thead.appendChild(headRow);
+      table.appendChild(thead);
       const tbody = document.createElement('tbody');
+
       users.forEach(user => {
         const tr = document.createElement('tr');
-        const uuidCell = document.createElement('td'); uuidCell.textContent = user.uuid || '';
-        const rankCell = document.createElement('td'); rankCell.textContent = user.rank || 'Viewer';
-        const swearCell = document.createElement('td'); swearCell.textContent = fetchTable("user-background", {uuid : user.uuid});
-        const banCell = document.createElement('td'); banCell.textContent = banneduntill(uuid) || "No ban info"
+        const uuidCell = document.createElement('td');
+        uuidCell.textContent = user.uuid || '';
+        const rankCell = document.createElement('td');
+        rankCell.textContent = user.rank || 'Viewer';
+        const banCell = document.createElement('td');
+        banCell.textContent = formatBanHours(user.banned_until);
+        const profanityCell = document.createElement('td');
+        profanityCell.textContent = String(Number(user.profanity_count || 0));
         const selectCell = document.createElement('td');
         const button = document.createElement('button');
-
-        button.type = 'button'; button.className = 'generic_button'; button.textContent = 'Use UUID';
-
-        const background = fetchTable("user-background", {uuid : user.uuid})
-
+        button.type = 'button';
+        button.className = 'generic_button';
+        button.textContent = 'Use UUID';
         button.addEventListener('click', () => {
           $('target-uuid').value = user.uuid || '';
-          $('target-rank').value = ['Viewer','Moderator','Admin'].includes(user.rank) ? user.rank : 'Viewer';
-          $('user-management').scrollIntoView({behavior:'smooth', block:'start'});
+          $('target-rank').value = ['Viewer', 'Moderator', 'Admin'].includes(user.rank) ? user.rank : 'Viewer';
+          $('user-management').scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
         selectCell.appendChild(button);
-        tr.append(uuidCell, rankCell, banCell, swearCell, selectCell); tbody.appendChild(tr);
+        tr.append(uuidCell, rankCell, banCell, profanityCell, selectCell);
+        tbody.appendChild(tr);
       });
-      table.appendChild(tbody); userList.appendChild(table);
-      setStatus('Loaded ' + users.length + ' user profile(s). The list is limited to the first 100 profiles.');
+      table.appendChild(tbody);
+      userList.appendChild(table);
+      setStatus('Loaded ' + users.length + ' user profile(s).');
     } catch (error) {
+      userList.textContent = error.message || String(error);
+      setStatus(error.message || String(error), true);
+    }
+  }
+
+  async function loadContent() {
+    contentList.textContent = 'Loading documents and study guides…';
+    try {
+      const result = await api('list-content');
+      contentList.replaceChildren();
+
+      function makeSection(title, items, contentType) {
+        const section = document.createElement('section');
+        section.className = 'content-management-section';
+        const heading = document.createElement('h3');
+        heading.textContent = title;
+        section.appendChild(heading);
+        if (!items.length) {
+          const empty = document.createElement('p');
+          empty.textContent = 'Nothing to show.';
+          section.appendChild(empty);
+          return section;
+        }
+
+        const list = document.createElement('div');
+        list.className = 'content-management-list';
+        items.forEach(item => {
+          const row = document.createElement('div');
+          row.className = 'content-management-row';
+          const details = document.createElement('div');
+          const name = document.createElement('strong');
+          name.textContent = item.name || '(untitled)';
+          const meta = document.createElement('p');
+          meta.textContent = 'By: ' + (item.author || 'Unknown') + (item.sg ? ' · ' + item.sg : '');
+          details.append(name, meta);
+
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'generic_button';
+          remove.textContent = 'Delete';
+          remove.addEventListener('click', async () => {
+            if (!confirm('Permanently delete "' + (item.name || 'this item') + '"? This cannot be undone.')) return;
+            remove.disabled = true;
+            try {
+              const deleted = await api('delete-content', { contentType, itemId: item.id });
+              setStatus(deleted.message || 'Content deleted.');
+              await loadContent();
+            } catch (error) {
+              setStatus(error.message || String(error), true);
+              remove.disabled = false;
+            }
+          });
+          row.append(details, remove);
+          list.appendChild(row);
+        });
+        section.appendChild(list);
+        return section;
+      }
+
+      contentList.append(
+        makeSection('Uploaded documents', result.documents || [], 'document'),
+        makeSection('Study guides', result.studyGuides || [], 'study')
+      );
+      setStatus('Loaded content management lists.');
+    } catch (error) {
+      contentList.textContent = error.message || String(error);
       setStatus(error.message || String(error), true);
     }
   }
@@ -233,28 +273,36 @@
   $('ban-user').addEventListener('click', () => {
     const hours = Number($('ban-hours').value);
     if (!Number.isInteger(hours) || hours < 1 || hours > 8760) {
-      setStatus('Ban duration must be a whole number from 1 to 8760 hours.', true); return;
+      setStatus('Ban duration must be a whole number from 1 to 8760 hours.', true);
+      return;
     }
     const reason = $('ban-reason').value.trim();
-    if (!reason) { setStatus('Enter a reason for the ban.', true); $('ban-reason').focus(); return; }
+    if (!reason) {
+      setStatus('Enter a reason for the ban.', true);
+      $('ban-reason').focus();
+      return;
+    }
     runAction('ban', { hours, reason }, 'Ban this account for ' + hours + ' hour(s)?\n\nReason: ' + reason);
   });
-  $('unban-user').addEventListener('click', () =>
-    runAction('unban', {}, 'Restore access for this account?'));
+  $('unban-user').addEventListener('click', () => runAction('unban', {}, 'Restore access for this account?'));
   $('change-user-rank').addEventListener('click', () => {
-    if (currentRank !== 'Admin') { setStatus('Only Admins can change user ranks.', true); return; }
+    if (currentRank !== 'Admin') {
+      setStatus('Only Admins can change user ranks.', true);
+      return;
+    }
     runAction('change-rank', { rank: $('target-rank').value }, 'Change this user rank to ' + $('target-rank').value + '?');
   });
   $('edit-users').addEventListener('click', () => {
-    $('user-management').scrollIntoView({behavior:'smooth', block:'start'});
+    $('user-management').scrollIntoView({ behavior: 'smooth', block: 'start' });
     $('target-uuid').focus();
     setStatus('Choose a UUID, then use the rank or access controls. Server permissions still apply.');
   });
   $('delete-users').addEventListener('click', () => {
-    setStatus('Permanent deletion is disabled to avoid orphaning user content. Use Ban User to restrict access, or contact the project maintainer to design a safe deletion workflow.');
-    $('user-management').scrollIntoView({behavior:'smooth', block:'start'});
+    setStatus('Permanent account deletion is disabled to avoid orphaning user content. Use Ban User to restrict access.');
   });
   $('lists-see').addEventListener('click', loadUsers);
+  $('refresh-content').addEventListener('click', loadContent);
+  $('badge').addEventListener('click', () => setStatus('Badge management is not implemented yet.'));
 
   initClient().then(async () => {
     try {
@@ -265,15 +313,12 @@
         $('target-rank').disabled = true;
       }
       setStatus('Signed in and verified as ' + currentRank + '.');
-    } catch (error) { setStatus(error.message || String(error), true); }
+      await Promise.all([loadUsers(), loadContent()]);
+    } catch (error) {
+      setStatus(error.message || String(error), true);
+    }
   }).catch(error => setStatus(error.message || String(error), true));
 })();
-
-  const badge = document.getElementById('badge');
-  $('badge').addEventListener('click', () => {
-      const badgeOption = getElementById('badge-target');
-      
-  });
 </script>
 </body>
 </html>
