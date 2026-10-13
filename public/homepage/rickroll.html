@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fullscreen Background Video</title>
+    <style>
+        /* Remove default margins and hide scrollbars */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Style the video to cover the entire screen */
+        #bgVideo {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            transform: translate(-50%, -50%);
+            object-fit: cover; /* Ensures video scales without distorting */
+            z-index: -1;       /* Places video behind your content */
+        }
+
+        /* Optional: Content overlay container */
+        .content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: white;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.4); /* Darkens the video for text readability */
+        }
+    </style>
+</head>
+<body>
+
+<!-- Video Element -->
+<video autoplay muted loop playsinline id="bgVideo">
+    <source src="movie.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+</video>
+
+<!-- Overlay Content (Optional) -->
+<div class="content">
+    <div>
+        <h1>GET RICKROLLED BROOO XDDDDDDDD</h1>
+    </div>
+</div>
+
+</body>
+</html>
