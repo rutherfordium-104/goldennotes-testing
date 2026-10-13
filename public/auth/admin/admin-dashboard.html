@@ -92,6 +92,31 @@
     return session;
   }
 
+  async function fetchTable(tableName, searchFor = undefined) {
+    try {
+      let query = supabaseClient.from(tableName).select('*');
+
+      if (searchFor && typeof searchFor === 'object') {
+        Object.keys(searchFor).forEach(key => {
+          query = query.eq(key, searchFor[key]);
+        });
+
+        const { data, error } = await query.maybeSingle();
+        if (error) throw error;
+        return data;
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      return data;
+
+    } catch (error) {
+      console.error(`Error fetching from table "${tableName}":`, error.message);
+      return null;
+    }
+  }
+
+
   async function api(action, extra = {}) {
     const { data: { session }, error } = await supabaseClient.auth.getSession();
     if (error || !session) throw new Error('Your session expired. Please sign in again.');
@@ -132,6 +157,24 @@
     }
   }
 
+  async function banneduntill(uuid) {
+    const { data, error } =
+            await supabaseAdmin.auth.admin.getUserById(uuid);
+
+    if (error) throw error;
+
+    const bannedUntil = data.user?.banned_until;
+
+    if (!bannedUntil) return null;
+
+    const remainingMs =
+            new Date(bannedUntil).getTime() - Date.now();
+
+    if (remainingMs <= 0) return 0;
+
+    return remainingMs / (1000 * 60 * 60);
+  }
+
   async function loadUsers() {
     try {
       const result = await api('list-users');
@@ -145,7 +188,7 @@
       const thead = document.createElement('thead');
       const headRow = document.createElement('tr');
 
-      ['UUID', 'Rank', 'Select'].forEach(label => {
+      ['UUID', 'Rank', 'Ban hours left', 'Profanity count (cursing/swear)', 'Select'].forEach(label => {
         const th = document.createElement('th'); th.textContent = label; headRow.appendChild(th);
       });
       thead.appendChild(headRow); table.appendChild(thead);
@@ -154,10 +197,14 @@
         const tr = document.createElement('tr');
         const uuidCell = document.createElement('td'); uuidCell.textContent = user.uuid || '';
         const rankCell = document.createElement('td'); rankCell.textContent = user.rank || 'Viewer';
+        const swearCell = document.createElement('td'); swearCell.textContent = fetchTable("user-background")
+        const banCell = document.createElement('td'); banCell.textContent = banneduntill(uuid) || "No ban info"
         const selectCell = document.createElement('td');
         const button = document.createElement('button');
 
         button.type = 'button'; button.className = 'generic_button'; button.textContent = 'Use UUID';
+
+        const background = fetchTable("user-background", {uuid : user.uuid})
 
         button.addEventListener('click', () => {
           $('target-uuid').value = user.uuid || '';
@@ -165,7 +212,7 @@
           $('user-management').scrollIntoView({behavior:'smooth', block:'start'});
         });
         selectCell.appendChild(button);
-        tr.append(uuidCell, rankCell, selectCell); tbody.appendChild(tr);
+        tr.append(uuidCell, rankCell, banCell, swearCell, selectCell); tbody.appendChild(tr);
       });
       table.appendChild(tbody); userList.appendChild(table);
       setStatus('Loaded ' + users.length + ' user profile(s). The list is limited to the first 100 profiles.');
