@@ -789,6 +789,7 @@ a:hover {
     /* 3. Fix Dropdown positioning to have space and stay centered */
     .dropdown {
         display: inline-block;
+        text-align: center
     }
 
     .dropdown-content {
