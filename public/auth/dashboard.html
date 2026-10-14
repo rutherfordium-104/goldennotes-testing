@@ -400,16 +400,61 @@
         if (event === 'SIGNED_OUT' || !nextSession) location.href = '/login';
       });
 
-      // The server protects this destination; never redirect to a guessed path.
-      $('adminBtn')?.addEventListener('click', async (event) => {
+      // Verify the current user's staff rank with the server before opening admin tools.
+      const adminBtn = $('adminBtn');
+      adminBtn?.addEventListener('click', async (event) => {
         event.preventDefault();
-        const { data: { session: activeSession }, error: sessionError } = await supabaseClient.auth.getSession();
-        if (sessionError || !activeSession) {
-          alert('Your session expired. Please sign in again.');
-          location.href = '/login';
-          return;
+        if (adminBtn.dataset.checking === 'true') return;
+
+        adminBtn.dataset.checking = 'true';
+        adminBtn.setAttribute('aria-busy', 'true');
+        const originalLabel = adminBtn.textContent;
+        adminBtn.textContent = 'Checking permissions…';
+
+        try {
+          const { data: { session: activeSession }, error: sessionError } =
+            await supabaseClient.auth.getSession();
+
+          if (sessionError || !activeSession?.access_token) {
+            alert('Your session expired. Please sign in again.');
+            location.href = '/login';
+            return;
+          }
+
+          const response = await fetch('/auth/moderator/actionpost', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + activeSession.access_token
+            },
+            body: JSON.stringify({ action: 'whoami' })
+          });
+          const result = await response.json().catch(() => ({}));
+
+          if (response.status === 401) {
+            alert('Your session expired. Please sign in again.');
+            location.href = '/login';
+            return;
+          }
+
+          if (response.status === 403) {
+            alert('Admin access denied. Your account must have the Admin or Moderator rank.');
+            return;
+          }
+
+          if (!response.ok || !result.success ||
+              !['Admin', 'Moderator'].includes(result.rank)) {
+            throw new Error(result.error || 'Could not verify admin permissions. Please try again.');
+          }
+
+          location.href = '/auth/admin/admin-dashboard.html';
+        } catch (error) {
+          alert('Could not open the admin dashboard: ' + (error.message || String(error)));
+        } finally {
+          adminBtn.dataset.checking = 'false';
+          adminBtn.removeAttribute('aria-busy');
+          adminBtn.textContent = originalLabel;
         }
-        location.href = '/auth/admin/admin-dashboard.html';
       });
     } catch (error) {
       showText($('display-username'), 'Dashboard failed to load: ' + (error.message || String(error)), 'var(--danger)');
