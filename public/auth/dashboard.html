@@ -302,6 +302,7 @@
         const card = document.createElement('button');
         card.type = 'button';
         card.className = 'card user-card-item';
+        card.style = "width : 85%; min-width: 85%;";
         const title = document.createElement('h3');
         const email = document.createElement('p');
         title.textContent = user.user_metadata?.username || (user.email || '').split('@')[0] || 'User';
