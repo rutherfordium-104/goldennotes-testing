@@ -84,6 +84,7 @@
           <button class="generic_button" id="change-user-rank" type="button">Change User Rank</button>
           <button class="generic_button" id="show-info" type="button">Show Info</button>
           <button class="generic_button" id="increment-profanity" type="button">Increment Profanity Count</button>
+          <button class="generic_button" id="reset-profanity-counter" type="button">Reset Profanity Counter</button>
           <button class="generic_button" id="edit-users" type="button">Edit Users (focus form)</button>
           <button class="generic_button" id="delete-users" type="button">Delete Users</button>
           <button class="generic_button" id="badge">Badges</button>
@@ -421,6 +422,28 @@
       const result = await api('increment-profanity-count', { targetUuid: uuid, sentence });
       $('curse-sentence').value = '';
       setStatus(result.message || 'Profanity count incremented.');
+      await loadUsers();
+    } catch (error) {
+      setStatus(error.message || String(error), true);
+    }
+  });
+  $('reset-profanity-counter').addEventListener('click', async () => {
+    let uuid;
+    try {
+      uuid = targetUuid();
+    } catch (error) {
+      setStatus(error.message || String(error), true);
+      return;
+    }
+    if (!confirm('Reset this user\'s profanity count to zero and permanently clear all recorded curse sentences? This cannot be undone.')) return;
+    try {
+      const result = await api('reset-profanity-counter', { targetUuid: uuid });
+      $('curse-sentence').value = '';
+      if ($('user-info-output') && !$('user-info-panel').hidden) {
+        const info = await api('show-info', { targetUuid: uuid });
+        $('user-info-output').textContent = JSON.stringify(info.background, null, 2);
+      }
+      setStatus(result.message || 'Profanity counter reset.');
       await loadUsers();
     } catch (error) {
       setStatus(error.message || String(error), true);
