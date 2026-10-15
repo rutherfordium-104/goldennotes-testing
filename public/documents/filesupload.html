@@ -262,7 +262,8 @@
                 name: docTitle || fileInput.name,
                 file_url: publicUrl,
                 file_path: storageData.path,
-                user_id: user.id
+                user_id: user.id,
+                moderation_status: 'checking'
             };
 
             const { error: dbError } = await supabaseClient
