@@ -193,58 +193,13 @@ app.get("/test/index.html", (req, res) => sendFileOrError(res, '/test/index.html
 // Keep the dashboard's existing navigation URL mapped to the protected route.
 app.get("/admin-dashboard.html", (req, res) => res.redirect(302, "/auth/admin/admin-dashboard.html"));
 
-app.get('/auth/admin/admin-dashboard.html', async (req, res) => { 
-    try {
-        // 1. Get the session token from cookies or Authorization header
-        console.log("[server.js]: Admin dashboard GET request detected, authorizing user...");
-        const token = req.cookies?.token || req.headers.authorization?.split(' ')[1];
-        console.log("[server.js | /admin-dashboard]: Session token received.");
-
-        if (!token) {
-            console.log("[server.js | /admin-dashboard]: Invalid/No token provided, returning 401");
-            return res.status(401).send('Unauthorized: No session token provided.');
-        }
-
-        // 2. Validate the token and get the user object from Supabase Auth
-        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-        console.log("[server.js | /admin-dashboard]: Auth user lookup completed.");
-        if (authError) console.log("[server.js | /admin-dashboard]: Authentication failed.");
-
-        if (authError || !user) {
-            console.log("[server.js | /admin-dashboard]: Invalid/Expired session, returning 401");
-            return res.status(401).send('Unauthorized: Invalid or expired session.');
-        }
-
-        const userUuid = user.id;
-        console.log("[server.js | /admin-dashboard]: User: ", userUuid);
-
-        // 3. Query the 'user-background' table to check their 'rank'
-        const { data: bgData, error: dbError } = await supabaseAdmin
-            .from('user-background')
-            .select('rank')
-            .eq('uuid', userUuid)
-            .single();
-
-        if (dbError || !bgData) {
-            console.log("[server.js | /admin-dashboard]: Failed to query user background profile, returning 403");
-            return res.status(403).send('Forbidden: User background profile not found.');
-        }
-
-        const userRank = bgData.rank;
-        console.log("[server.js | /admin-dashboard]: Rank ", userRank);
-
-        // 4. Verify if they are an 'admin' or 'moderator'
-        if (userRank !== 'Admin' && userRank !== 'Moderator') {
-            return res.status(403).send('auth/');
-        }
-
-        // 5. Access Granted! Serve your admin webpage file
-        return sendFileOrError(res, '/admin-dashboard', 'auth/admin/admin-dashboard.html');
-
-    } catch (err) {
-        console.error('Error checking user permissions:', err);
-        return res.status(500).send('Internal Server Error');
-    }
+app.get('/auth/admin/admin-dashboard.html', (req, res) => {
+    // The HTML shell contains no privileged data. The dashboard client obtains a
+    // Supabase access token and every data/action request is verified by the API.
+    // Browser navigation cannot attach a Supabase bearer token, so requiring one
+    // on this GET caused valid admins to receive "Unauthorized: No session token".
+    res.set('Cache-Control', 'no-store');
+    return sendFileOrError(res, '/admin-dashboard', 'auth/admin/admin-dashboard.html');
 });
 
 app.get("/developers/debug", async (req, res) => {
