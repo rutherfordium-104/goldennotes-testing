@@ -45,6 +45,12 @@
         <strong id="admin-status" role="status" aria-live="polite">Checking your session…</strong>
       </div>
 
+      <section class="panel-controller" id="content-management">
+        <div class="title-card"><h2>PDF Review &amp; Content Management</h2><p>Review uploaded PDFs here. Documents marked “checking” have Accept and Deny controls; accepted documents become visible to users. Moderators and admins can also remove documents or study guides.</p></div>
+        <button class="generic_button" id="refresh-content" type="button">Refresh Content</button>
+        <div id="content-list" aria-live="polite">Loading documents and study guides…</div>
+      </section>
+
       <section class="panel-controller" id="user-management">
         <div class="title-card"><h2>User Actions</h2><p>Ban, restore access, or change a user's rank.</p></div>
         <div class="admin-form">
@@ -107,11 +113,7 @@
         <pre id="user-info-output" style="white-space:pre-wrap;overflow-wrap:anywhere;"></pre>
       </section>
 
-      <section class="panel-controller" id="content-management">
-        <div class="title-card"><h2>Content Management</h2><p>Moderators and admins can remove uploaded documents or study guides.</p></div>
-        <button class="generic_button" id="refresh-content" type="button">Refresh Content</button>
-        <div id="content-list" aria-live="polite">Loading documents and study guides…</div>
-      </section>
+
     </main>
   </div>
 <script>
