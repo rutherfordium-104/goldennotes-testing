@@ -317,15 +317,33 @@ async function checkProfanity(text) {
     };
 }
 
-async function incrementProfanityCount(userId, amount = 1) {
+async function incrementProfanityCount(userId, amount = 1, sentence = "") {
     if (!userId || amount < 1) return;
     const { data: userBg, error: readError } = await supabaseAdmin
-        .from("user-background").select("profanity-count").eq("uuid", userId).maybeSingle();
+        .from("user-background").select('"profanity-count", "curse-senetences-said"').eq("uuid", userId).maybeSingle();
     if (readError) throw readError;
-    const currentCount = Number(userBg?.["profanity-count"] || 0);
+    if (!userBg) throw new Error("User background profile not found.");
+    const currentCount = Number(userBg["profanity-count"] || 0);
+    const sentences = Array.isArray(userBg["curse-senetences-said"]) ? userBg["curse-senetences-said"] : [];
+    const trimmedSentence = String(sentence || "").trim().slice(0, 2000);
+    const updates = { "profanity-count": currentCount + amount };
+    if (trimmedSentence) updates["curse-senetences-said"] = [...sentences, trimmedSentence].slice(-500);
     const { error: updateError } = await supabaseAdmin
-        .from("user-background").update({ "profanity-count": currentCount + amount }).eq("uuid", userId);
+        .from("user-background").update(updates).eq("uuid", userId);
     if (updateError) throw updateError;
+}
+
+async function appendCurseSentence(userId, sentence) {
+    if (!userId || !String(sentence || "").trim()) return;
+    const { data: userBg, error: readError } = await supabaseAdmin
+        .from("user-background").select('"curse-senetences-said"').eq("uuid", userId).maybeSingle();
+    if (readError) throw readError;
+    if (!userBg) throw new Error("User background profile not found.");
+    const sentences = Array.isArray(userBg["curse-senetences-said"]) ? userBg["curse-senetences-said"] : [];
+    const { error } = await supabaseAdmin.from("user-background")
+        .update({ "curse-senetences-said": [...sentences, String(sentence).trim().slice(0, 2000)].slice(-500) })
+        .eq("uuid", userId);
+    if (error) throw error;
 }
 
 app.post("/api/moderate-text", async (req, res) => {
@@ -339,7 +357,7 @@ app.post("/api/moderate-text", async (req, res) => {
 
         const result = await checkProfanity(req.body.text);
         const flagged = Number(result.bad_words_total || 0) > 0;
-        if (flagged) await incrementProfanityCount(user.id, Number(result.bad_words_total) || 1);
+        if (flagged) await incrementProfanityCount(user.id, Number(result.bad_words_total) || 1, req.body.text);
         return res.status(200).json({ flagged, censoredText: result.censored_content, provider: result.provider || "unknown" });
     } catch (error) {
         console.error("[moderation] Text check failed:", error);
@@ -362,7 +380,7 @@ app.post("/api/profanity-webhook", async (req, res) => {
         const result = await checkProfanity(text);
         const badWordsTotal = Number(result.bad_words_total || 0);
         if (badWordsTotal <= 0) return res.status(200).json({ success: true, flagged: false });
-        await incrementProfanityCount(userId, badWordsTotal);
+        await incrementProfanityCount(userId, badWordsTotal, text);
         const field = typeof record.text === "string" ? "text" : "content";
         const { error: noteError } = await supabaseAdmin.from("notes")
             .update({ [field]: result.censored_content }).eq("id", record.id);
@@ -718,7 +736,7 @@ app.post('/auth/moderator/actionpost', async (req, res) => {
             return res.status(403).json({ error: "Admin or Moderator rank required." });
         }
 
-        const { action, targetUuid, hours, rank, reason } = req.body || {};
+        const { action, targetUuid, hours, rank, reason, sentence, contentType, itemId, moderationStatus } = req.body || {};
 
         if (action === "whoami") {
             return res.json({ success: true, userId: user.id, rank: actorRank });
@@ -755,7 +773,7 @@ app.post('/auth/moderator/actionpost', async (req, res) => {
 
         if (action === "list-content") {
             const [{ data: documents, error: documentsError }, { data: studyGuides, error: studyError }] = await Promise.all([
-                supabaseAdmin.from("documents").select("id, name, author, file_path"),
+                supabaseAdmin.from("documents").select("id, name, author, file_path, file_url, moderation_status, created_at"),
                 supabaseAdmin.from("study").select("id, name, author, sg")
             ]);
             if (documentsError || studyError) {
@@ -765,8 +783,48 @@ app.post('/auth/moderator/actionpost', async (req, res) => {
             return res.json({ success: true, documents: documents || [], studyGuides: studyGuides || [] });
         }
 
+        if (action === "show-info") {
+            if (typeof targetUuid !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(targetUuid)) {
+                return res.status(400).json({ error: "Enter a valid target user UUID." });
+            }
+            const { data: background, error } = await supabaseAdmin
+                .from("user-background").select("*").eq("uuid", targetUuid).maybeSingle();
+            if (error) return res.status(500).json({ error: "Could not load user background." });
+            if (!background) return res.status(404).json({ error: "User background not found." });
+            return res.json({ success: true, background });
+        }
+
+        if (action === "increment-profanity-count") {
+            if (typeof targetUuid !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(targetUuid)) {
+                return res.status(400).json({ error: "Enter a valid target user UUID." });
+            }
+            const enteredSentence = typeof sentence === "string" ? sentence.trim().slice(0, 2000) : "";
+            if (!enteredSentence) return res.status(400).json({ error: "Enter the sentence to add to curse-senetences-said." });
+            const { data: target, error: targetReadError } = await supabaseAdmin
+                .from("user-background").select("rank").eq("uuid", targetUuid).maybeSingle();
+            if (targetReadError) return res.status(500).json({ error: "Could not load the target profile." });
+            if (!target) return res.status(404).json({ error: "User background not found." });
+            if (actorRank === "Moderator" && ["Admin", "Moderator"].includes(target.rank)) {
+                return res.status(403).json({ error: "Moderators cannot change another staff account." });
+            }
+            await incrementProfanityCount(targetUuid, 1, enteredSentence);
+            return res.json({ success: true, message: "Profanity count incremented and sentence recorded." });
+        }
+
+        if (action === "review-document") {
+            if (typeof itemId !== "string" || !["accepted", "denied"].includes(moderationStatus)) {
+                return res.status(400).json({ error: "A document ID and accepted/denied decision are required." });
+            }
+            const { error } = await supabaseAdmin.from("documents").update({
+                moderation_status: moderationStatus,
+                moderation_reviewed_by: user.id,
+                moderation_reviewed_at: new Date().toISOString()
+            }).eq("id", itemId);
+            if (error) return res.status(500).json({ error: "Could not update document review status." });
+            return res.json({ success: true, message: "Document " + moderationStatus + "." });
+        }
+
         if (action === "delete-content") {
-            const { contentType, itemId } = req.body || {};
             if (!["document", "study"].includes(contentType) ||
                 (typeof itemId !== "string" && typeof itemId !== "number") ||
                 String(itemId).trim().length === 0 || String(itemId).length > 100) {
