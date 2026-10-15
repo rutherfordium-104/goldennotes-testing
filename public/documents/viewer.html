@@ -86,12 +86,13 @@
             const { data: docs, error } = await supabaseClient
                 .from('documents')
                 .select('*')
+                .eq('moderation_status', 'accepted')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
 
             if (!docs || docs.length === 0) {
-                container.innerHTML = "<p>No documents found.</p>";
+                container.innerHTML = "<p>No approved documents found yet. New uploads are checked by a moderator before they appear here.</p>";
                 return;
             }
 
