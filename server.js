@@ -811,6 +811,24 @@ app.post('/auth/moderator/actionpost', async (req, res) => {
             return res.json({ success: true, message: "Profanity count incremented and sentence recorded." });
         }
 
+        if (action === "reset-profanity-counter") {
+            if (typeof targetUuid !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(targetUuid)) {
+                return res.status(400).json({ error: "Enter a valid target user UUID." });
+            }
+            const { data: target, error: targetReadError } = await supabaseAdmin
+                .from("user-background").select("rank").eq("uuid", targetUuid).maybeSingle();
+            if (targetReadError) return res.status(500).json({ error: "Could not load the target profile." });
+            if (!target) return res.status(404).json({ error: "User background not found." });
+            if (actorRank === "Moderator" && ["Admin", "Moderator"].includes(target.rank)) {
+                return res.status(403).json({ error: "Moderators cannot change another staff account." });
+            }
+            const { error: resetError } = await supabaseAdmin.from("user-background")
+                .update({ "profanity-count": 0, "curse-senetences-said": [] })
+                .eq("uuid", targetUuid);
+            if (resetError) return res.status(500).json({ error: "Could not reset profanity count and sentence history." });
+            return res.json({ success: true, message: "Profanity count and recorded sentences have been reset." });
+        }
+
         if (action === "review-document") {
             if (typeof itemId !== "string" || !["accepted", "denied"].includes(moderationStatus)) {
                 return res.status(400).json({ error: "A document ID and accepted/denied decision are required." });
