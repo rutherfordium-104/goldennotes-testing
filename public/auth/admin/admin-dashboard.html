@@ -57,6 +57,9 @@
           <label for="ban-reason">Ban reason (required)
             <textarea class="form-textarea" id="ban-reason" rows="3" maxlength="1000" placeholder="Explain why this account is being banned" required></textarea>
           </label>
+          <label for="curse-sentence">Sentence to record (manual profanity increment)
+            <textarea class="form-textarea" id="curse-sentence" rows="2" maxlength="2000" placeholder="Enter the sentence to add to the user's background"></textarea>
+          </label>
           <label for="target-rank">New rank
             <select style="max-width: 25%" class="form-select" id="target-rank"><option>Viewer</option><option>Moderator</option><option>Admin</option></select>
           </label>
@@ -79,6 +82,8 @@
           <button class="generic_button" id="ban-user" type="button">Ban User</button>
           <button class="generic_button" id="unban-user" type="button">Restore / Unban User</button>
           <button class="generic_button" id="change-user-rank" type="button">Change User Rank</button>
+          <button class="generic_button" id="show-info" type="button">Show Info</button>
+          <button class="generic_button" id="increment-profanity" type="button">Increment Profanity Count</button>
           <button class="generic_button" id="edit-users" type="button">Edit Users (focus form)</button>
           <button class="generic_button" id="delete-users" type="button">Delete Users</button>
           <button class="generic_button" id="badge">Badges</button>
@@ -94,6 +99,11 @@
         </div>
 
         <div id="user-list" aria-live="polite"></div>
+      </section>
+
+      <section class="panel-controller" id="user-info-panel" hidden>
+        <div class="title-card"><h2>User Background</h2><p>Visible to authorized moderators and admins only.</p></div>
+        <pre id="user-info-output" style="white-space:pre-wrap;overflow-wrap:anywhere;"></pre>
       </section>
 
       <section class="panel-controller" id="content-management">
@@ -297,7 +307,8 @@
           const name = document.createElement('strong');
           name.textContent = item.name || '(untitled)';
           const meta = document.createElement('p');
-          meta.textContent = 'By: ' + (item.author || 'Unknown') + (item.sg ? ' · ' + item.sg : '');
+          meta.textContent = 'By: ' + (item.author || 'Unknown') + (item.sg ? ' · ' + item.sg : '') +
+            (contentType === 'document' ? ' · Status: ' + (item.moderation_status || 'checking') : '');
           details.append(name, meta);
 
           const remove = document.createElement('button');
@@ -316,7 +327,45 @@
               remove.disabled = false;
             }
           });
-          row.append(details, remove);
+          if (contentType === 'document') {
+            const actions = document.createElement('div');
+            actions.style.display = 'flex';
+            actions.style.gap = '8px';
+            actions.style.flexWrap = 'wrap';
+            if (item.file_url) {
+              const view = document.createElement('a');
+              view.href = item.file_url;
+              view.target = '_blank';
+              view.rel = 'noopener noreferrer';
+              view.className = 'generic_button';
+              view.textContent = 'View';
+              actions.appendChild(view);
+            }
+            if ((item.moderation_status || 'checking') === 'checking') {
+              for (const decision of ['accepted', 'denied']) {
+                const review = document.createElement('button');
+                review.type = 'button';
+                review.className = 'generic_button';
+                review.textContent = decision === 'accepted' ? 'Accept' : 'Deny';
+                review.addEventListener('click', async () => {
+                  review.disabled = true;
+                  try {
+                    const reviewed = await api('review-document', { itemId: item.id, moderationStatus: decision });
+                    setStatus(reviewed.message || 'Document review saved.');
+                    await loadContent();
+                  } catch (error) {
+                    setStatus(error.message || String(error), true);
+                    review.disabled = false;
+                  }
+                });
+                actions.appendChild(review);
+              }
+            }
+            actions.appendChild(remove);
+            row.append(details, actions);
+          } else {
+            row.append(details, remove);
+          }
           list.appendChild(row);
         });
         section.appendChild(list);
@@ -349,6 +398,34 @@
     runAction('ban', { hours, reason }, 'Ban this account for ' + hours + ' hour(s)?\n\nReason: ' + reason);
   });
   $('unban-user').addEventListener('click', () => runAction('unban', {}, 'Restore access for this account?'));
+  $('show-info').addEventListener('click', async () => {
+    try {
+      const result = await api('show-info', { targetUuid: targetUuid() });
+      $('user-info-output').textContent = JSON.stringify(result.background, null, 2);
+      $('user-info-panel').hidden = false;
+      $('user-info-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setStatus('Loaded user background.');
+    } catch (error) {
+      setStatus(error.message || String(error), true);
+    }
+  });
+  $('increment-profanity').addEventListener('click', async () => {
+    try {
+      const uuid = targetUuid();
+      const sentence = $('curse-sentence').value.trim();
+      if (!sentence) {
+        setStatus('Enter a sentence to record before incrementing the profanity count.', true);
+        $('curse-sentence').focus();
+        return;
+      }
+      const result = await api('increment-profanity-count', { targetUuid: uuid, sentence });
+      $('curse-sentence').value = '';
+      setStatus(result.message || 'Profanity count incremented.');
+      await loadUsers();
+    } catch (error) {
+      setStatus(error.message || String(error), true);
+    }
+  });
   $('change-user-rank').addEventListener('click', () => {
     if (currentRank !== 'Admin') {
       setStatus('Only Admins can change user ranks.', true);
