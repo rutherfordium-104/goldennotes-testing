@@ -188,8 +188,6 @@ app.get("/announcement/view", (req, res) => sendFileOrError(res, '/announcement/
 app.get("/public", (req, res) => res.redirect("/"));
 
 app.get("/man-page/index.html", (req, res) => sendFileOrError(res, '/man-page/index.html', 'man-page/index.html'));
-app.get("/mod-page/index.html", (req, res) => sendFileOrError(res, '/mod-page/index.html', 'mod-page/index.html'));
-app.get("/test/index.html", (req, res) => sendFileOrError(res, '/test/index.html', 'test/index.html'));
 // Keep the dashboard's existing navigation URL mapped to the protected route.
 app.get("/admin-dashboard.html", (req, res) => res.redirect(302, "/auth/admin/admin-dashboard.html"));
 
