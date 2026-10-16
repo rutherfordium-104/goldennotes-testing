@@ -102,6 +102,8 @@
             padding: 20px;
             transition: var(--transition);
             cursor: pointer;
+
+            max-height: 200px;
         }
 
         .preview-card:hover {
