@@ -54,7 +54,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 card.innerHTML = `
                     <span class="badge ${typeBadge}">${typeLabel}</span>
                     <h3>${ann.name || 'No Title'}</h3>
-                    <p>${ann.content || 'No content provided.'}</p>
                     <a href="${link}" class="technical-text">View Details →</a>
                 `;
 
