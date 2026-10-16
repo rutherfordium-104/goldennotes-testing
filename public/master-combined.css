@@ -1030,3 +1030,91 @@ a:hover {
     resize: vertical;
     font-family: inherit;
 }
+
+/* --------------------------------------------------------------------------
+   8. GLOBAL DROPDOWN STACKING FIX
+   Keep navigation dropdowns above page content, cards, and grids.
+   -------------------------------------------------------------------------- */
+.top-header {
+    position: relative;
+    z-index: 1000;
+    isolation: isolate;
+    overflow: visible;
+}
+
+.top-header .nav-actions {
+    position: relative;
+    z-index: 1001;
+    overflow: visible;
+}
+
+.top-header .dropdown {
+    position: relative;
+    z-index: 1002;
+    overflow: visible;
+    cursor: pointer;
+}
+
+.top-header .dropdown:hover,
+.top-header .dropdown:focus-within {
+    z-index: 1004;
+}
+
+.top-header .dropdown-content {
+    display: none;
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0;
+    z-index: 1005;
+    min-width: 190px;
+    width: max-content;
+    max-width: min(280px, calc(100vw - 24px));
+    padding: 6px;
+    margin: 0;
+    background: var(--primary-navy, #14213D);
+    border: 1px solid var(--strong-line, #39445F);
+    border-radius: var(--radius-md, 8px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
+    isolation: isolate;
+}
+
+.top-header .dropdown:hover > .dropdown-content,
+.top-header .dropdown:focus-within > .dropdown-content {
+    display: block;
+}
+
+.top-header .dropdown-content a {
+    position: relative;
+    z-index: 1;
+    display: block;
+    width: 100%;
+    white-space: normal;
+    text-align: left;
+    border-radius: 5px;
+}
+
+.top-header .dropdown-content a:hover,
+.top-header .dropdown-content a:focus-visible {
+    position: relative;
+    z-index: 2;
+}
+
+/* Mobile navigation wraps; keep the menu aligned and above following content. */
+@media (max-width: 900px) {
+    .top-header {
+        z-index: 1000;
+        overflow: visible;
+    }
+
+    .top-header .nav-actions,
+    .top-header .dropdown {
+        overflow: visible;
+    }
+
+    .top-header .dropdown-content {
+        top: calc(100% + 4px);
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1005;
+    }
+}
