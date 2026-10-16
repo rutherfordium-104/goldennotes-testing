@@ -78,8 +78,8 @@
         /* What's New Section */
         .whats-new-section {
             padding: 60px 20px;
-            max-width: 1200px;
             margin: 0 auto;
+            width: 80%;
         }
 
         .section-header {
