@@ -279,12 +279,14 @@
             return;
         }
 
+        console.log("USER UUID DOWN HERE:")
+        console.log(session.user.id);
         const announcementData = {
             'name': document.getElementById('name').value || 'NullNameFallback',
             'announcement-type': document.getElementById('announcement-type').value,
             'author': document.getElementById('author').value.trim() || 'EmptyAuthorFieldFallback',
             'content': document.getElementById('content').value,
-            'user' : session.user.user_metadata?.id
+            'user' : session.user.id
         };
 
         const result = await newCol('announcements', announcementData);
