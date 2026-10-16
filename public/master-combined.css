@@ -1030,3 +1030,10 @@ a:hover {
     resize: vertical;
     font-family: inherit;
 }
+
+.always-on-top {
+  position: fixed; /* Lock position to the viewport */
+  top: 0;
+  left: 0;
+  z-index: 2147483647; /* Maximum allowable 32-bit integer z-index value */
+}
