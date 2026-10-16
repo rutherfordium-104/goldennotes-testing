@@ -18,39 +18,27 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        body {
-            /* theme controlled by master-combined.css [data-theme] */
-            min-height: 100vh;
-        }
+        body { min-height: 100vh; }
 
-        .signup-container {
-            background-color: #151f32;
+        .login-container {
+            background-color: var(--bg-card);
             padding: 40px;
             border-radius: 12px;
             box-shadow: 0 8px 32px rgba(11, 17, 30, 0.8), 0 0 15px rgba(0, 123, 255, 0.05);
-            width: 100%;
+            width: calc(100% - 32px);
             max-width: 400px;
-            border: 1px solid #1e2d4a;
-            margin: 100px auto;
+            border: 1px solid var(--border-color);
+            margin: 48px auto;
         }
 
-        .signup-header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .signup-header h2 {
-            color: #ffffff;
+        .login-header { text-align: center; margin-bottom: 30px; }
+        .login-header h2 {
+            color: var(--main-text);
             font-size: 28px;
             margin-bottom: 8px;
         }
+        .login-header p { color: var(--muted-text); font-size: 14px; }
 
-        .signup-header p {
-            color: #8da2c0;
-            font-size: 14px;
-        }
-
-        /* Error and Success Alert Styling */
         .message-box {
             display: none;
             padding: 10px;
@@ -58,43 +46,38 @@
             font-size: 14px;
             margin-bottom: 20px;
             text-align: center;
+            overflow-wrap: anywhere;
         }
-
         .message-box.error {
             background-color: rgba(239, 68, 68, 0.15);
             border: 1px solid #ef4444;
             color: #f87171;
         }
-
         .message-box.success {
             background-color: rgba(34, 197, 94, 0.15);
             border: 1px solid #22c55e;
             color: #4ade80;
         }
 
-        .form-group {
-            margin-bottom: 20px;
-        }
-
+        .form-group { margin-bottom: 20px; }
         .form-group label {
             display: block;
             margin-bottom: 8px;
-            color: #cbd5e1;
+            color: var(--secondary-text);
             font-size: 14px;
             font-weight: 600;
         }
-
         .form-group input {
+            display: block;
             width: 100%;
             padding: 12px;
-            background-color: #0f172a;
-            border: 1px solid #334155;
+            background-color: var(--deepest-background);
+            border: 1px solid var(--border-color);
             border-radius: 6px;
             font-size: 16px;
-            color: #ffffff;
+            color: var(--main-text);
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
         }
-
         .form-group input:focus {
             border-color: #ff6600;
             box-shadow: 0 0 8px rgba(255, 102, 0, 0.4);
@@ -105,46 +88,41 @@
             width: 100%;
             padding: 12px;
             background-color: #ff6600;
-            color: #ffffff;
+            color: #fff;
             border: none;
             border-radius: 6px;
             font-size: 16px;
             font-weight: bold;
             cursor: pointer;
             transition: background-color 0.3s ease, transform 0.1s ease;
-            margin-top: 10px;
+            margin-top: 4px;
         }
-
-        .signup-btn:hover {
-            background-color: #e65c00;
-        }
-
-        .signup-btn:active {
-            transform: scale(0.98);
-        }
-
-        .signup-btn:disabled {
-            background-color: #7c3a00;
-            cursor: not-allowed;
-        }
+        .signup-btn:hover:not(:disabled) { background-color: #e65c00; }
+        .signup-btn:active { transform: scale(0.98); }
+        .signup-btn:disabled { background-color: #7c3a00; cursor: not-allowed; }
 
         .signup-footer {
             text-align: center;
             margin-top: 25px;
             font-size: 14px;
-            color: #64748b;
+            color: var(--muted-text);
         }
-
         .signup-footer a {
             color: #38bdf8;
             text-decoration: none;
-            font-weight: bold;
-            transition: color 0.2s ease;
+            font-weight: 600;
+        }
+        .signup-footer a:hover { color: #0ea5e9; text-decoration: underline; }
+
+        .back-button {
+            display: block;
+            width: 100%;
+            margin-top: 16px;
         }
 
-        .signup-footer a:hover {
-            color: #0ea5e9;
-            text-decoration: underline;
+        @media (max-width: 480px) {
+            .login-container { padding: 28px 22px; margin: 28px auto; }
+            .login-header h2 { font-size: 25px; }
         }
     </style>
 </head>
@@ -175,7 +153,7 @@
 
 
 <div class="login-container card" style="max-width: 400px;">
-    <div class="top-header">
+    <div class="login-header">
         <h2>Create Account</h2>
         <p>Join GoldenNotes to get started now.</p>
     </div>
@@ -206,7 +184,7 @@
     <div class="signup-footer">
         Already have an account? <a href="/login">Sign In</a>
     </div>
-    <button onclick="history.back()" class="btn btn-secondary login-btn">Go Back</button>
+    <button type="button" onclick="history.back()" class="btn btn-secondary back-button">Go Back</button>
 </div>
 <script>
     // 1. Initialize Supabase Client (Renamed to 'supabaseClient' to avoid identifier collision)
