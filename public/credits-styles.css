@@ -446,3 +446,9 @@ master
     cursor: pointer;
     user-select: none;
 }
+
+p {
+    max-width: 600px;
+    text-align: left;
+    line-height: 1.6;
+}
