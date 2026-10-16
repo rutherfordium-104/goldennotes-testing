@@ -107,6 +107,29 @@
         <a href="/report.html">Report a Problem</a>
     </div>
 </footer>
+
+<!-- Load canvas-confetti from CDN (ensure this is included before your script) -->
+<script src="https://jsdelivr.net"></script>
+
+<script>
+    // Get the current date and time
+    const now = new Date();
+
+    // Extract hours and minutes
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+
+    // Check if the time is strictly before 10:00 AM
+    if (currentHour < 10) {
+        // Fire confetti automatically on page load
+        confetti({
+            particleCount: 150,
+            spread: 80,
+            origin: { y: 0.6 }
+        });
+    }
+</script>
+
 </body>
 </html>
 
