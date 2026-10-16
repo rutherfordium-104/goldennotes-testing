@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../master-combined.css">
+    <title>Project GoldenNotes - Login</title>
+
+    <!-- Supabase JS Client via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./theme.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            /* theme controlled by master-combined.css [data-theme] */
+            min-height: 100vh;
+        }
+
+        .login-container {
+            background-color: var(--bg-card);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(11, 17, 30, 0.8), 0 0 15px rgba(0, 123, 255, 0.05);
+            width: 100%;
+            max-width: 400px;
+            border: 1px solid var(--border-color);
+            margin: 100px auto;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-header h2 {
+            color: var(--main-text);
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .login-header p {
+            color: var(--muted-text);
+            font-size: 14px;
+        }
+
+        .error-message {
+            display: none;
+            background-color: rgba(239, 68, 68, 0.15);
+            border: 1px solid #ef4444;
+            color: #f87171;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--secondary-text);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--deepest-background);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 16px;
+            color: var(--main-text);
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .form-group input:focus {
+            border-color: #ff6600;
+            box-shadow: 0 0 8px rgba(255, 102, 0, 0.4);
+            outline: none;
+        }
+
+        .form-group input[type="checkbox"] {
+            width: auto;
+            accent-color: #ff6600;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            font-size: 14px;
+            color: var(--muted-text);
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .forgot-password {
+            color: #38bdf8;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .forgot-password:hover {
+            color: #0ea5e9;
+            text-decoration: underline;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #ff6600;
+            color: #ffffff;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+        }
+
+        .login-btn:hover {
+            background-color: #e65c00;
+        }
+
+        .login-btn:active {
+            transform: scale(0.98);
+        }
+
+        .login-btn:disabled {
+            background-color: #7c3a00;
+            cursor: not-allowed;
+        }
+
+        .spacer {
+            min-height: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<header class="top-header">
+    <div class="nav-actions">
+        <div class="header-left">
+            <img src="../favicon.jpeg" alt="logo" id="logo">
+        </div>
+        <a href="/credits.html" class="btn btn-primary" id="credits">Credits</a>
+        <a href="/" class="btn btn-secondary" id="dashboard">Homepage</a>
+        <a href="/man-page/index.html" class="btn btn-secondary">Manual</a>
+        <div class="dropdown btn btn-secondary">
+            Study
+            <div class="dropdown-content">
+                <a href="/corkboard" class="btn btn-secondary" id="cb">Corkboard</a>
+                <a href="/study" class="btn btn-secondary" id="study">Study Guides</a>
+                <a href="/documents" class="btn btn-secondary" id="documents">Documents</a>
+                <a href="/calendar" class="btn btn-secondary" id="calendar">Calendar</a>
+
+            </div>
+        </div>
+
+        <a href="/dashboard/settings" class="btn btn-secondary" id="settings-nav">Settings</a>
+        <a href="/dashboard" class="btn btn-secondary" id="d-nav">Dashboard</a>
+    </div>
+</header>
+
+<div class="login-container card" style="max-width: 400px;">
+    <div class="login-header">
+        <h2>Welcome Back</h2>
+        <p>Please enter your details to sign in</p>
+    </div>
+
+    <div id="error-box" class="error-message"></div>
+
+    <form id="login-form">
+        <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email">
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+        </div>
+
+        <div class="form-actions">
+            <label class="remember-me">
+                <input type="checkbox" name="remember"> Remember me
+            </label>
+            <a href="#" class="forgot-password">Forgot password?</a>
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn btn-primary login-btn">Sign In</button>
+        <div class="spacer"></div>
+    </form>
+    <button onclick="history.back()" class="btn generic_button">Go Back</button>
+    <div class="spacer"></div>
+    <p>Don't have an account? <a href="/signup">Create an Account</a></p>
+</div>
+
+<script>
+    // Replace with your actual Supabase credentials from Project Settings -> API
+    const SUPABASE_URL = 'https://cqxlnmvmfkylozcdffxf.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxeGxubXZtZmt5bG96Y2RmZnhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3NDc4OTMsImV4cCI6MjEwNDMyMzg5M30.mpxEjcWdD9Vy0WsHRL7O8n1fWfnKInsBmOgaYsiv_38';
+
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const loginForm = document.getElementById('login-form');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const submitBtn = document.getElementById('submit-btn');
+        const errorBox = document.getElementById('error-box');
+
+        if (!loginForm) return;
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            errorBox.style.display = 'none';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Signing in...';
+
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
+                email: email,
+                password: password
+            });
+
+            if (error) {
+                // Supabase can reject a banned account before issuing a session, so look up
+                // the ban notice by the email the person just attempted to use.
+                try {
+                    const response = await fetch('/auth/ban-info', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email })
+                    });
+                    const banInfo = await response.json().catch(() => ({}));
+                    if (response.ok && banInfo.banned) {
+                        window.location.href = '/auth/ban.html?reason=' + encodeURIComponent(banInfo.reason || 'No reason was provided.');
+                        return;
+                    }
+                } catch (lookupError) {
+                    console.warn('Could not check ban status:', lookupError);
+                }
+                errorBox.textContent = error.message;
+                errorBox.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Sign In';
+                return;
+            }
+
+            // Show success status
+            submitBtn.textContent = 'Success! Redirecting...';
+
+            // ADDED DELAY: Allows local storage write to complete before page navigation
+            setTimeout(() => {
+                // Update this path if your dashboard file is located elsewhere
+                window.location.href = '/dashboard';
+            }, 250);
+        });
+    });
+</script>
+
+</body>
+</html>

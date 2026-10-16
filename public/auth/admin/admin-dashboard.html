@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GoldenNotes Admin Dashboard</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/auth/config.js"></script>
+  <script src="/auth/theme.js"></script>
+  <link rel="stylesheet" href="/master-combined.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top-header">
+  <div class="nav-actions">
+    <div class="header-left">
+      <img src="../favicon.jpeg" alt="logo" id="logo">
+    </div>
+    <a href="/credits.html" class="btn btn-primary" id="credits">Credits</a>
+    <a href="/" class="btn btn-secondary" id="dashboard">Homepage</a>
+    <a href="/man-page/index.html" class="btn btn-secondary">Manual</a>
+    <div class="dropdown btn btn-secondary">
+      Study
+      <div class="dropdown-content">
+        <a href="/corkboard" class="btn btn-secondary" id="cb">Corkboard</a>
+        <a href="/study" class="btn btn-secondary" id="study">Study Guides</a>
+        <a href="/documents" class="btn btn-secondary" id="documents">Documents</a>
+        <a href="/calendar" class="btn btn-secondary" id="calendar">Calendar</a>
+
+      </div>
+    </div>
+
+    <a href="/dashboard/settings" class="btn btn-secondary" id="settings-nav">Settings</a>
+    <a href="/dashboard" class="btn btn-secondary" id="d-nav">Dashboard</a>
+  </div>
+</header>
+  <div class="container">
+    <main class="card page" style="max-width: 80%;">
+      <h1 class="title">GoldenNotes Admin Dashboard</h1>
+      <p>Manage accounts using server-verified permissions. Actions are checked again by the server; hiding a button is not a security boundary.</p>
+      <div class="card">
+        <p>Command execution status code:</p>
+        <strong id="admin-status" role="status" aria-live="polite">Checking your session…</strong>
+      </div>
+
+      <section class="panel-controller" id="content-management">
+        <div class="title-card"><h2>PDF Review &amp; Content Management</h2><p>Review uploaded PDFs here. Documents marked “checking” have Accept and Deny controls; accepted documents become visible to users. Moderators and admins can also remove documents or study guides.</p></div>
+        <button class="generic_button" id="refresh-content" type="button">Refresh Content</button>
+        <div id="content-list" aria-live="polite">Loading documents and study guides…</div>
+      </section>
+
+      <section class="panel-controller" id="user-management">
+        <div class="title-card"><h2>User Actions</h2><p>Ban, restore access, or change a user's rank.</p></div>
+        <div class="admin-form">
+          <label for="target-uuid">User UUID
+            <input class="form-input" id="target-uuid" autocomplete="off" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+          </label>
+          <label for="ban-hours">Ban duration (hours)
+            <input class="form-input" id="ban-hours" type="number" min="1" max="8760" step="1" value="24">
+          </label>
+          <label for="ban-reason">Ban reason (required)
+            <textarea class="form-textarea" id="ban-reason" rows="3" maxlength="1000" placeholder="Explain why this account is being banned" required></textarea>
+          </label>
+          <label for="curse-sentence">Sentence to record (manual profanity increment)
+            <textarea class="form-textarea" id="curse-sentence" rows="2" maxlength="2000" placeholder="Enter the sentence to add to the user's background"></textarea>
+          </label>
+          <label for="target-rank">New rank
+            <select style="max-width: 25%" class="form-select" id="target-rank"><option>Viewer</option><option>Moderator</option><option>Admin</option></select>
+          </label>
+          <label for="badge-target">Badge target rank
+          <select style="max-width: 25%" class="form-select" id="badge-target">
+
+            <!--WARNING: DO NOT CHANGE THE OPTIONS-->
+            <!--The options below are tied straight to the Supabase user-background table
+            changing any of them will lead to unwanted results, note that they are also CASE-sENSItive
+            meaning even a lowercase letter can destroy EVERYTHING, if your rank is not set to either
+            of the four, it will throw an illegal command-->
+          <option>Viewer</option>
+          <option>Editor</option>
+          <option>Moderator</option>
+          <option>Admin</option>
+          </select>
+          </label>
+        </div>
+        <div class="admin-actions">
+          <button class="generic_button" id="ban-user" type="button">Ban User</button>
+          <button class="generic_button" id="unban-user" type="button">Restore / Unban User</button>
+          <button class="generic_button" id="change-user-rank" type="button">Change User Rank</button>
+          <button class="generic_button" id="show-info" type="button">Show Info</button>
+          <button class="generic_button" id="increment-profanity" type="button">Increment Profanity Count</button>
+          <button class="generic_button" id="reset-profanity-counter" type="button">Reset Profanity Counter</button>
+          <button class="generic_button" id="edit-users" type="button">Edit Users (focus form)</button>
+          <button class="generic_button" id="delete-users" type="button">Delete Users</button>
+          <button class="generic_button" id="badge">Badges</button>
+
+        </div>
+        <p class="danger-note">Permanent account deletion is intentionally not enabled in this dashboard: it can be irreversible and may leave related content behind. Use a temporary ban to restrict access instead.</p>
+      </section>
+
+      <section class="panel-controller" id="management-tools">
+        <div class="title-card"><h2>Management Tools</h2><p>Load the available user profiles and their ranks.</p></div>
+        <div>
+          <button class="generic_button" id="lists-see" type="button">See Lists / Refresh Users</button>
+        </div>
+
+        <div id="user-list" aria-live="polite"></div>
+      </section>
+
+      <section class="panel-controller" id="user-info-panel" hidden>
+        <div class="title-card"><h2>User Background</h2><p>Visible to authorized moderators and admins only.</p></div>
+        <pre id="user-info-output" style="white-space:pre-wrap;overflow-wrap:anywhere;"></pre>
+      </section>
+
+
+    </main>
+  </div>
+<script>
+(() => {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const status = $('admin-status');
+  const userList = $('user-list');
+  const contentList = $('content-list');
+  const supabaseClient = window.GoldenNotesConfig?.initClient?.() || window.supabaseClient;
+  let currentRank = null;
+
+  function setStatus(message, isError = false) {
+    status.textContent = message;
+    status.style.color = isError ? '#ff7777' : '';
+  }
+
+  async function initClient() {
+    if (!window.supabase || !window.GoldenNotesConfig || !supabaseClient) {
+      setStatus('Supabase config was not loaded. Check /auth/config.js.', true);
+      throw new Error('Supabase config was not loaded. Check /auth/config.js.');
+    }
+    const session = await getValidSession();
+    if (!session) {
+      location.href = '/login';
+      throw new Error('Please sign in again; no valid Supabase session was found.');
+    }
+    return session;
+  }
+
+  // Return a usable access token, refreshing once if the stored session is stale.
+  async function getValidSession() {
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error) throw new Error('Could not read your Supabase session: ' + error.message);
+
+    let session = data?.session || null;
+    if (session?.access_token) return session;
+
+    const { data: refreshed, error: refreshError } =
+      await supabaseClient.auth.refreshSession();
+    if (refreshError) {
+      throw new Error('No session access token is available. Please sign in again. ' + refreshError.message);
+    }
+
+    session = refreshed?.session || null;
+    if (!session?.access_token) return null;
+    return session;
+  }
+
+  async function api(action, extra = {}) {
+    let session = await getValidSession();
+    if (!session?.access_token) {
+      location.href = '/login';
+      throw new Error('Your session expired. Please sign in again.');
+    }
+
+    const sendRequest = (accessToken) => fetch('/auth/moderator/actionpost', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + accessToken
+      },
+      body: JSON.stringify({ action, ...extra })
+    });
+
+    let response = await sendRequest(session.access_token);
+
+    // If the API rejects an expired access token, refresh once and retry.
+    if (response.status === 401) {
+      session = await getValidSession();
+      if (!session?.access_token) {
+        location.href = '/login';
+        throw new Error('Your session expired. Please sign in again.');
+      }
+      response = await sendRequest(session.access_token);
+    }
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Request failed (' + response.status + ').');
+    }
+    return data;
+  }
+
+  function targetUuid() {
+    const uuid = $('target-uuid').value.trim();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uuid)) {
+      throw new Error('Enter a valid user UUID first.');
+    }
+    return uuid;
+  }
+
+  async function runAction(action, extra = {}, confirmation = '') {
+    try {
+      const uuid = targetUuid();
+      if (confirmation && !confirm(confirmation)) return;
+      const result = await api(action, { targetUuid: uuid, ...extra });
+      setStatus(result.message || 'Action completed successfully.');
+      if (['ban', 'unban', 'delete-user'].includes(action)) await loadUsers();
+    } catch (error) {
+      setStatus(error.message || String(error), true);
+    }
+  }
+
+  function formatBanHours(bannedUntil) {
+    if (!bannedUntil) return 'Not banned';
+    const ms = new Date(bannedUntil).getTime() - Date.now();
+    if (!Number.isFinite(ms) || ms <= 0) return 'Not banned';
+    const totalMinutes = Math.ceil(ms / 60000);
+    return Math.floor(totalMinutes / 60) + 'h ' + (totalMinutes % 60) + 'm';
+  }
+
+  async function loadUsers() {
+    userList.textContent = 'Loading users…';
+    try {
+      const result = await api('list-users');
+      const users = result.users || [];
+      userList.replaceChildren();
+      if (!users.length) {
+        userList.textContent = 'No user profiles returned.';
+        setStatus('No user profiles returned.');
+        return;
+      }
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const headRow = document.createElement('tr');
+      ['UUID', 'Rank', 'Ban time remaining', 'Profanity count', 'Select'].forEach(label => {
+        const th = document.createElement('th');
+        th.textContent = label;
+        headRow.appendChild(th);
+      });
+      thead.appendChild(headRow);
+      table.appendChild(thead);
+      const tbody = document.createElement('tbody');
+
+      users.forEach(user => {
+        const tr = document.createElement('tr');
+        const uuidCell = document.createElement('td');
+        uuidCell.textContent = user.uuid || '';
+        const rankCell = document.createElement('td');
+        rankCell.textContent = user.rank || 'Viewer';
+        const banCell = document.createElement('td');
+        banCell.textContent = formatBanHours(user.banned_until);
+        const profanityCell = document.createElement('td');
+        profanityCell.textContent = String(Number(user.profanity_count || 0));
+        const selectCell = document.createElement('td');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'generic_button';
+        button.textContent = 'Use UUID';
+        button.addEventListener('click', () => {
+          $('target-uuid').value = user.uuid || '';
+          $('target-rank').value = ['Viewer', 'Moderator', 'Admin'].includes(user.rank) ? user.rank : 'Viewer';
+          $('user-management').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+        selectCell.appendChild(button);
+        tr.append(uuidCell, rankCell, banCell, profanityCell, selectCell);
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      userList.appendChild(table);
+      setStatus('Loaded ' + users.length + ' user profile(s).');
+    } catch (error) {
+      userList.textContent = error.message || String(error);
+      setStatus(error.message || String(error), true);
+    }
+  }
+
+  async function loadContent() {
+    contentList.textContent = 'Loading documents and study guides…';
+    try {
+      const result = await api('list-content');
+      contentList.replaceChildren();
+
+      function makeSection(title, items, contentType) {
+        const section = document.createElement('section');
+        section.className = 'content-management-section';
+        const heading = document.createElement('h3');
+        heading.textContent = title;
+        section.appendChild(heading);
+        if (!items.length) {
+          const empty = document.createElement('p');
+          empty.textContent = 'Nothing to show.';
+          section.appendChild(empty);
+          return section;
+        }
+
+        const list = document.createElement('div');
+        list.className = 'content-management-list';
+        items.forEach(item => {
+          const row = document.createElement('div');
+          row.className = 'content-management-row';
+          const details = document.createElement('div');
+          const name = document.createElement('strong');
+          name.textContent = item.name || '(untitled)';
+          const meta = document.createElement('p');
+          meta.textContent = 'By: ' + (item.author || 'Unknown') + (item.sg ? ' · ' + item.sg : '') +
+            (contentType === 'document' ? ' · Status: ' + (item.moderation_status || 'checking') : '');
+          details.append(name, meta);
+
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'generic_button';
+          remove.textContent = 'Delete';
+          remove.addEventListener('click', async () => {
+            if (!confirm('Permanently delete "' + (item.name || 'this item') + '"? This cannot be undone.')) return;
+            remove.disabled = true;
+            try {
+              const deleted = await api('delete-content', { contentType, itemId: item.id });
+              setStatus(deleted.message || 'Content deleted.');
+              await loadContent();
+            } catch (error) {
+              setStatus(error.message || String(error), true);
+              remove.disabled = false;
+            }
+          });
+          if (contentType === 'document') {
+            const actions = document.createElement('div');
+            actions.style.display = 'flex';
+            actions.style.gap = '8px';
+            actions.style.flexWrap = 'wrap';
+            if (item.file_url) {
+              const view = document.createElement('a');
+              view.href = item.file_url;
+              view.target = '_blank';
+              view.rel = 'noopener noreferrer';
+              view.className = 'generic_button';
+              view.textContent = 'View';
+              actions.appendChild(view);
+            }
+            if ((item.moderation_status || 'checking') === 'checking') {
+              for (const decision of ['accepted', 'denied']) {
+                const review = document.createElement('button');
+                review.type = 'button';
+                review.className = 'generic_button';
+                review.textContent = decision === 'accepted' ? 'Accept' : 'Deny';
+                review.addEventListener('click', async () => {
+                  review.disabled = true;
+                  try {
+                    const reviewed = await api('review-document', { itemId: item.id, moderationStatus: decision });
+                    setStatus(reviewed.message || 'Document review saved.');
+                    await loadContent();
+                  } catch (error) {
+                    setStatus(error.message || String(error), true);
+                    review.disabled = false;
+                  }
+                });
+                actions.appendChild(review);
+              }
+            }
+            actions.appendChild(remove);
+            row.append(details, actions);
+          } else {
+            row.append(details, remove);
+          }
+          list.appendChild(row);
+        });
+        section.appendChild(list);
+        return section;
+      }
+
+      contentList.append(
+        makeSection('Uploaded documents', result.documents || [], 'document'),
+        makeSection('Study guides', result.studyGuides || [], 'study')
+      );
+      setStatus('Loaded content management lists.');
+    } catch (error) {
+      contentList.textContent = error.message || String(error);
+      setStatus(error.message || String(error), true);
+    }
+  }
+
+  $('ban-user').addEventListener('click', () => {
+    const hours = Number($('ban-hours').value);
+    if (!Number.isInteger(hours) || hours < 1 || hours > 8760) {
+      setStatus('Ban duration must be a whole number from 1 to 8760 hours.', true);
+      return;
+    }
+    const reason = $('ban-reason').value.trim();
+    if (!reason) {
+      setStatus('Enter a reason for the ban.', true);
+      $('ban-reason').focus();
+      return;
+    }
+    runAction('ban', { hours, reason }, 'Ban this account for ' + hours + ' hour(s)?\n\nReason: ' + reason);
+  });
+  $('unban-user').addEventListener('click', () => runAction('unban', {}, 'Restore access for this account?'));
+  $('show-info').addEventListener('click', async () => {
+    try {
+      const result = await api('show-info', { targetUuid: targetUuid() });
+      $('user-info-output').textContent = JSON.stringify(result.background, null, 2);
+      $('user-info-panel').hidden = false;
+      $('user-info-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setStatus('Loaded user background.');
+    } catch (error) {
+      setStatus(error.message || String(error), true);
+    }
+  });
+  $('increment-profanity').addEventListener('click', async () => {
+    try {
+      const uuid = targetUuid();
+      const sentence = $('curse-sentence').value.trim();
+      if (!sentence) {
+        setStatus('Enter a sentence to record before incrementing the profanity count.', true);
+        $('curse-sentence').focus();
+        return;
+      }
+      const result = await api('increment-profanity-count', { targetUuid: uuid, sentence });
+      $('curse-sentence').value = '';
+      setStatus(result.message || 'Profanity count incremented.');
+      await loadUsers();
+    } catch (error) {
+      setStatus(error.message || String(error), true);
+    }
+  });
+  $('reset-profanity-counter').addEventListener('click', async () => {
+    let uuid;
+    try {
+      uuid = targetUuid();
+    } catch (error) {
+      setStatus(error.message || String(error), true);
+      return;
+    }
+    if (!confirm('Reset this user\'s profanity count to zero and permanently clear all recorded curse sentences? This cannot be undone.')) return;
+    try {
+      const result = await api('reset-profanity-counter', { targetUuid: uuid });
+      $('curse-sentence').value = '';
+      if ($('user-info-output') && !$('user-info-panel').hidden) {
+        const info = await api('show-info', { targetUuid: uuid });
+        $('user-info-output').textContent = JSON.stringify(info.background, null, 2);
+      }
+      setStatus(result.message || 'Profanity counter reset.');
+      await loadUsers();
+    } catch (error) {
+      setStatus(error.message || String(error), true);
+    }
+  });
+  $('change-user-rank').addEventListener('click', () => {
+    if (currentRank !== 'Admin') {
+      setStatus('Only Admins can change user ranks.', true);
+      return;
+    }
+    runAction('change-rank', { rank: $('target-rank').value }, 'Change this user rank to ' + $('target-rank').value + '?');
+  });
+  $('edit-users').addEventListener('click', () => {
+    $('user-management').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    $('target-uuid').focus();
+    setStatus('Choose a UUID, then use the rank or access controls. Server permissions still apply.');
+  });
+  $('delete-users').addEventListener('click', () => {
+    setStatus('Permanent account deletion is disabled to avoid orphaning user content. Use Ban User to restrict access.');
+  });
+  $('lists-see').addEventListener('click', loadUsers);
+  $('refresh-content').addEventListener('click', loadContent);
+  $('badge').addEventListener('click', () => setStatus('Badge management is not implemented yet.'));
+
+  initClient().then(async () => {
+    try {
+      const result = await api('whoami');
+      currentRank = result.rank;
+      if (currentRank !== 'Admin') {
+        $('change-user-rank').disabled = true;
+        $('target-rank').disabled = true;
+      }
+      setStatus('Signed in and verified as ' + currentRank + '.');
+      await Promise.all([loadUsers(), loadContent()]);
+    } catch (error) {
+      setStatus(error.message || String(error), true);
+    }
+  }).catch(error => setStatus(error.message || String(error), true));
+})();
+</script>
+</body>
+</html>

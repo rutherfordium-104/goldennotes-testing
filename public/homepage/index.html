@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoldenNotes v1.1</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+
+    <!-- Supabase JS Client via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/auth/config.js"></script>
+    <script src="/auth/theme.js"></script>
+    <link rel="stylesheet" href="/master-combined.css">
+
+    <link rel="stylesheet" href="/homepage/style.css">
+
+    <script src="/homepage/index.js" defer></script>
+</head>
+<body>
+
+<header class="top-header">
+    <div class="nav-actions">
+        <div class="header-left">
+            <img src="../favicon.jpeg" alt="logo" id="logo">
+        </div>
+        <a href="/credits.html" class="btn btn-primary" id="credits">Credits</a>
+        <a href="/" class="btn btn-secondary" id="dashboard">Homepage</a>
+        <a href="/man-page/index.html" class="btn btn-secondary">Manual</a>
+        <div class="dropdown btn btn-secondary">
+            Study
+            <div class="dropdown-content">
+                <a href="/corkboard" class="btn btn-secondary" id="cb">Corkboard</a>
+                <a href="/study" class="btn btn-secondary" id="study">Study Guides</a>
+                <a href="/documents" class="btn btn-secondary" id="documents">Documents</a>
+                <a href="/calendar" class="btn btn-secondary" id="calendar">Calendar</a>
+
+            </div>
+        </div>
+
+        <a href="/dashboard/settings" class="btn btn-secondary" id="settings-nav">Settings</a>
+        <a href="/dashboard" class="btn btn-secondary" id="d-nav">Dashboard</a>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <a href="#" class="btn btn-secondary" title="Search"><span style="font-size: 1.2rem;">🔍</span></a>
+        <a href="/auth/login.html" class="btn btn-secondary" id="login">Login</a>
+        <a href="/auth/signup.html" class="btn btn-primary">Sign Up</a>
+    </div>
+</header>
+
+<main>
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-branding">
+            <img src="/favicon.jpeg" alt="G Logo" class="hero-logo">
+            <h2 class="hero-title">GOLDENNOTES</h2>
+        </div>
+
+        <div class="hero-subtitle">
+            <p><strong>Built by Batch 2032, for Batch 2032.</strong></p>
+            <p>A student-led academic resource platform for sharing, discovering, and using helpful learning resources.</p>
+        </div>
+
+        <div class="hero-tagline">— A place where you can save notes. —</div>
+
+        <div class="hero-ctas">
+            <a href="/study/course-list.html" class="btn btn-primary btn-lg">
+                <span>📖</span> Explore Library
+            </a>
+            <a href="/corkboard/main.html" class="btn btn-secondary btn-lg" style="border: 1px solid var(--main-gold);">
+                <span>💬</span> Go to Corkboard
+            </a>
+        </div>
+        <h5><strong>Copyright © 2026 The GoldenNotes Team. All rights reserved.</strong></h5>
+    </section>
+
+    <!-- What's New Section -->
+    <section class="whats-new-section">
+        <div class="section-header">
+            <span style="font-size: 1.5rem;">✨</span>
+            <h2>What's New</h2>
+            <div class="solid-divider-strong" style="flex-grow: 1; margin: 0 0 0 20px;"></div>
+        </div>
+
+        <div class="whats-new-grid" id="whats-new-grid">
+            <!-- Announcements will be loaded here dynamically -->
+            <div class="preview-card">Loading latest updates...</div>
+        </div>
+        <button class="generic_button" id="make-ann">Create an Announcement</button>
+    </section>
+
+    <!-- Mission Banner -->
+    <section class="mission-banner">
+        <div class="mission-icon">🎓</div>
+        <div class="mission-text">
+            <h2>SAME RIGOR. BETTER SUPPORT.</h2>
+            <p>GoldenNotes helps students help one another without replacing official school resources. We believe in collaborative success through shared knowledge.</p>
+        </div>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <div>Project GoldenNotes &middot; Phillipine Science High School Davao Region Campus &middot; Batch 32</div>
+    <div class="footer-links">
+        <a href="/credits.html">Credits</a>
+        <a href="/report.html">Report a Problem</a>
+    </div>
+</footer>
+</body>
+</html>
+

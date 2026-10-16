@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GoldenNotes - Dashboard</title>
+
+    <!-- Supabase JS Client via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="/auth/config.js"></script>
+    <script src="/auth/theme.js"></script>
+
+    <link rel="stylesheet" href="../master-combined.css">
+    <style>
+        .dashboard-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: var(--bg-card);
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md);
+        }
+
+        .dashboard-container > .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            border-bottom: 1px solid var(--subtle-line);
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .user-info {
+            background-color: var(--secondary-navy);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 25px;
+        }
+
+        .user-info p {
+            margin-bottom: 10px;
+            color: var(--secondary-text);
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .user-info span {
+            color: var(--main-text);
+            font-weight: bold;
+        }
+
+        #display-id {
+            font-size: 12px;
+            color: var(--muted-text) !important;
+            word-break: break-all;
+        }
+
+        .logout-btn {
+            background-color: var(--danger) !important;
+            color: #fff !important;
+            border-color: var(--danger) !important;
+        }
+
+        .logout-btn:hover {
+            filter: brightness(0.92);
+        }
+
+        .dashboard-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        /* Styling for search result cards */
+        .user-card-item {
+            cursor: pointer;
+            margin-top: 15px;
+            padding: 15px 20px;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            text-align: left;
+        }
+
+        .user-card-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md, 0 4px 12px rgba(0,0,0,0.15));
+        }
+
+        .user-card-item h3 {
+            margin: 0 0 5px 0;
+            color: var(--main-text);
+            font-size: 16px;
+        }
+
+        .user-card-item p {
+            margin: 0;
+            color: var(--muted-text);
+            font-size: 13px;
+        }
+
+        /* Popup Overlay (Darkened Background) */
+        .popup-overlay {
+            display: none;             /* Automatically visible on load */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6); /* 60% dim effect */
+            z-index: 9999;             /* Sits above everything else */
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* The Modal Card Container */
+        .popup-card {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+
+        .popup-card h2 {
+            margin-top: 0;
+            color: #333333;
+        }
+
+        .popup-card p {
+            color: #555555;
+            line-height: 1.5;
+            margin-bottom: 25px;
+        }
+
+        /* Button Layout */
+        .popup-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        /* 'Yes' Button Styles */
+        .btn-yes {
+            background-color: #ffc107; /* Golden theme color */
+            color: #000000;
+        }
+
+        .btn-yes:hover {
+            background-color: #e0a800;
+        }
+
+        /* 'Maybe Later' Button Styles */
+        .btn-later {
+            background-color: #e0e0e0;
+            color: #333333;
+        }
+
+        .btn-later:hover {
+            background-color: #d5d5d5;
+        }
+
+    </style>
+</head>
+<body>
+
+<header class="top-header">
+    <div class="nav-actions">
+        <div class="header-left">
+            <img src="../favicon.jpeg" alt="logo" id="logo">
+        </div>
+        <a href="/credits.html" class="btn btn-primary" id="credits">Credits</a>
+        <a href="/" class="btn btn-secondary" id="dashboard">Homepage</a>
+        <a href="/man-page/index.html" class="btn btn-secondary">Manual</a>
+        <div class="dropdown btn btn-secondary">
+            Study
+            <div class="dropdown-content">
+                <a href="/corkboard" class="btn btn-secondary" id="cb">Corkboard</a>
+                <a href="/study" class="btn btn-secondary" id="study">Study Guides</a>
+                <a href="/documents" class="btn btn-secondary" id="documents">Documents</a>
+                <a href="/calendar" class="btn btn-secondary" id="calendar">Calendar</a>
+
+            </div>
+        </div>
+
+        <a href="/dashboard/settings" class="btn btn-secondary" id="settings-nav">Settings</a>
+        <a href="/dashboard" class="btn btn-secondary" id="d-nav">Dashboard</a>
+    </div>
+</header>
+
+<div style="min-height: 50px;"><br></div>
+<!-- spacer -->
+
+<div class="dashboard-container">
+    <div class="header">
+        <h2>Dashboard</h2>
+        <button id="logout-btn" class="btn btn-secondary logout-btn">Log Out</button>
+    </div>
+
+    <div class="user-info">
+        <p>Username: <span id="display-username">Loading...</span></p>
+        <p>Email: <span id="display-email">Loading...</span></p>
+        <p>User ID (UUID): <span id="display-id" style="font-size: 12px; color: #64748b;">Loading...</span></p>
+    </div>
+
+    <div class="dashboard-actions">
+        <a href="/dashboard/settings" class="btn btn-primary">Open Settings</a>
+    </div>
+
+    <h1><br></h1>
+    <div class="card">
+        <h2>Search for users (SMC Email)</h2>
+        <button class="btn btn-secondary" id="redirect">View all users</button>
+        <div class="solid-divider-subtle"></div>
+        <form action="/dashboard" method="GET">
+            <input name="search" placeholder="firstname.familyname@smc.pshs.edu.ph or name keyword" type="text" id="search-input" class="form-input">
+        </form>
+
+        <div id="usersec" class="centerx" style="width: 80%; margin: 20px auto 0 auto;">
+            <!-- User cards render here -->
+        </div>
+
+    </div>
+
+    <div class="card">
+        <h2>Admin</h2>
+        <a id="adminBtn" class="btn btn-secondary">Dashboard</a>
+    </div>
+</div>
+
+<!-- The GoldenNotes Welcome Popup -->
+<div id="welcomePopup" class="popup-overlay">
+    <div class="popup-card">
+        <h2>Welcome to GoldenNotes! 📝</h2>
+        <p>Hey there! Thanks for signing up to GoldenNotes, before you start doing things, would you mind reading the rules?</p>
+        <div class="popup-buttons">
+            <!-- Changed href to '#' and added id="yesPopupBtn" -->
+            <a href="#" id="yesPopupBtn" class="btn btn-yes">Yes</a>
+            <button id="closePopupBtn" class="btn btn-later">Maybe later</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const SUPABASE_URL = 'https://cqxlnmvmfkylozcdffxf.supabase.co';
+  const SUPABASE_ANON_KEY = window.GoldenNotesConfig?.KEY || '';
+  const supabaseClient = window.GoldenNotesConfig?.initClient?.()
+    || (window.supabase && window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY));
+
+  const $ = (id) => document.getElementById(id);
+  const showText = (el, text, color) => {
+    if (!el) return;
+    el.textContent = text;
+    if (color) el.style.color = color;
+  };
+
+  async function searchUsers(query) {
+    const usersec = $('usersec');
+    if (!usersec) return;
+    usersec.replaceChildren();
+    const loading = document.createElement('p');
+    loading.textContent = 'Searching…';
+    usersec.appendChild(loading);
+
+    try {
+      const response = await fetch('/auth/searchusers?query=' + encodeURIComponent(query), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Failed to search users.');
+      usersec.replaceChildren();
+
+      if (!Array.isArray(result.users) || result.users.length === 0) {
+        const empty = document.createElement('p');
+        empty.textContent = 'No users found matching that query.';
+        usersec.appendChild(empty);
+        return;
+      }
+
+      result.users.forEach((user) => {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'card user-card-item';
+        card.style = "width : 85%; min-width: 85%;";
+        const title = document.createElement('h3');
+        const email = document.createElement('p');
+        title.textContent = user.user_metadata?.username || (user.email || '').split('@')[0] || 'User';
+        email.textContent = user.email || 'No email available';
+        card.append(title, email);
+        card.addEventListener('click', () => {
+          if (user.id) location.href = '/dashboard/view/user?id=' + encodeURIComponent(user.id);
+        });
+        usersec.appendChild(card);
+      });
+    } catch (error) {
+      usersec.replaceChildren();
+      const message = document.createElement('p');
+      message.style.color = 'var(--danger)';
+      message.textContent = 'Could not search users: ' + (error.message || String(error));
+      usersec.appendChild(message);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (!supabaseClient) {
+      showText($('display-username'), 'Could not load sign-in service.');
+      return;
+    }
+
+    const logoutBtn = $('logout-btn');
+    const searchForm = document.querySelector('form[action="/dashboard"]');
+    const searchInput = $('search-input');
+    const popup = $('welcomePopup');
+    const yesBtn = $('yesPopupBtn');
+    const laterBtn = $('closePopupBtn');
+
+    const redirectBtn = $('redirect');
+    redirectBtn?.addEventListener('click', () => { location.href = '/dashboard?search=@'; });
+
+    try {
+      const { data: { session }, error } = await supabaseClient.auth.getSession();
+      if (error || !session?.user) {
+        location.href = '/login';
+        return;
+      }
+
+      const user = session.user;
+      showText($('display-email'), user.email || 'Not available');
+      showText($('display-id'), user.id || 'Not available');
+      showText($('display-username'), user.user_metadata?.username || user.email?.split('@')[0] || 'No username set');
+
+      // Keep first-time rules acknowledgement separate for each signed-in account.
+      const acceptedKey = 'rules_accepted:' + user.id;
+      try {
+        if (popup && !localStorage.getItem(acceptedKey)) popup.style.display = 'flex';
+      } catch (_) {
+        if (popup) popup.style.display = 'flex';
+      }
+
+      yesBtn?.addEventListener('click', (event) => {
+        event.preventDefault();
+        try { localStorage.setItem(acceptedKey, 'true'); } catch (_) {}
+        location.href = '/rules.html';
+      });
+      laterBtn?.addEventListener('click', () => {
+        if (popup) popup.style.display = 'none';
+      });
+
+      searchForm?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const query = searchInput?.value.trim() || '';
+        if (query) {
+          const url = new URL(location.href);
+          url.searchParams.set('search', query);
+          history.replaceState(null, '', url);
+          searchUsers(query);
+        }
+      });
+
+      const params = new URLSearchParams(location.search);
+      const query = params.get('search');
+      if (query?.trim()) {
+        if (searchInput) searchInput.value = query.trim();
+        await searchUsers(query.trim());
+      }
+
+      logoutBtn?.addEventListener('click', async () => {
+        logoutBtn.disabled = true;
+        const { error: signOutError } = await supabaseClient.auth.signOut();
+        if (signOutError) {
+          logoutBtn.disabled = false;
+          alert('Could not log out: ' + signOutError.message);
+          return;
+        }
+        location.href = '/login';
+      });
+
+      supabaseClient.auth.onAuthStateChange((event, nextSession) => {
+        if (event === 'SIGNED_OUT' || !nextSession) location.href = '/login';
+      });
+
+      // Verify the current user's staff rank with the server before opening admin tools.
+      const adminBtn = $('adminBtn');
+      adminBtn?.addEventListener('click', async (event) => {
+        event.preventDefault();
+        if (adminBtn.dataset.checking === 'true') return;
+
+        adminBtn.dataset.checking = 'true';
+        adminBtn.setAttribute('aria-busy', 'true');
+        const originalLabel = adminBtn.textContent;
+        adminBtn.textContent = 'Checking permissions…';
+
+        try {
+          const { data: { session: activeSession }, error: sessionError } =
+            await supabaseClient.auth.getSession();
+
+          if (sessionError || !activeSession?.access_token) {
+            alert('Your session expired. Please sign in again.');
+            location.href = '/login';
+            return;
+          }
+
+          const response = await fetch('/auth/moderator/actionpost', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + activeSession.access_token
+            },
+            body: JSON.stringify({ action: 'whoami' })
+          });
+          const result = await response.json().catch(() => ({}));
+
+          if (response.status === 401) {
+            alert('Your session expired. Please sign in again.');
+            location.href = '/login';
+            return;
+          }
+
+          if (response.status === 403) {
+            alert('Admin access denied. Your account must have the Admin or Moderator rank.');
+            return;
+          }
+
+          if (!response.ok || !result.success ||
+              !['Admin', 'Moderator'].includes(result.rank)) {
+            throw new Error(result.error || 'Could not verify admin permissions. Please try again.');
+          }
+
+          location.href = '/auth/admin/admin-dashboard.html';
+        } catch (error) {
+          alert('Could not open the admin dashboard: ' + (error.message || String(error)));
+        } finally {
+          adminBtn.dataset.checking = 'false';
+          adminBtn.removeAttribute('aria-busy');
+          adminBtn.textContent = originalLabel;
+        }
+      });
+    } catch (error) {
+      showText($('display-username'), 'Dashboard failed to load: ' + (error.message || String(error)), 'var(--danger)');
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
