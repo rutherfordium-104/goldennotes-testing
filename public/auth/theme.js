@@ -16,7 +16,6 @@
         } catch (_) { /* ignore */ }
         return theme;
     }
-
     // Fast paint from local cache (avoids flash before auth/settings fetch)
     (function bootstrapFromCache() {
         try {
