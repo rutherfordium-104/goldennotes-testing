@@ -10,8 +10,8 @@
    1. NEWMASTER TOKENS & BASE (priority source)
    -------------------------------------------------------------------------- */
 :root {
-    --display-font: 'Space Grotesk', Arial, sans-serif;
-    --body-font: 'Inter', Arial, sans-serif;
+    --display-font: 'Montserrat', Arial, sans-serif, font-weight: bold;
+    --body-font: 'Montserrat', Arial, sans-serif;
     --mono-font: 'IBM Plex Mono', 'Courier New', monospace;
 
     --deepest-background: #080D18;
