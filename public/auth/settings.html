@@ -52,7 +52,7 @@
     <div class="settings-row">
             <h3>Experimental Gradient Theme</h3>
             <p>In progress.</p>
-        <label class="theme-toggle" aria-label="Experimental mode">
+        <label class="theme-toggle-experimental" aria-label="Experimental mode">
             <input type="checkbox" id="experimental-mode" role="switch">
             <span class="slider"></span>
         </label>
@@ -86,7 +86,9 @@
 
         // Initialize the theme state
         await window.GoldenNotesTheme.initThemeFromUser();
+
         const isLight = window.GoldenNotesTheme.isLightThemeActive();
+
         const isExperimental = window.GoldenNotesTheme.isExperimentalThemeActive();
 
         // Update the toggle UI and status text
