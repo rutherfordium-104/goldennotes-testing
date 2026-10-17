@@ -165,16 +165,16 @@ a:hover {
 
 .btn-primary {
     background: linear-gradient(180deg, var(--primary-glass), var(--secondary-glass), var(--soft-glass));
-    background-size: 200% 100%;
+    background-size: 100% 100%;
     background-position: 0% 0;
-    transition: background-position 0.5s ease;
+    transition: background-position 0.5s ease, background-size 0.5 ease;
     color: var(--deepest-background);
     border-color: var(--glass-line);
 }
 
 .btn-primary:hover:not(:disabled):not(.write-disabled) {
-    background: linear-gradient(180deg, var(--secondary-glass), var(--soft-glass), var(--dark-glass));
-    background-size: 200% 100%;
+    background: linear-gradient(180deg, var(--primary-glass), var(--secondary-glass),);
+    background-size: 200% 200%;
     background-position: 0% 0;
     border-color: var(--dark-glass-line);
     box-shadow: 0 5px 16px rgba(5, 28, 73, 0.18);
@@ -195,6 +195,7 @@ a:hover {
     background-position: 0% 0;
     color: var(--main-text);
     border-color: var(--glass-line);
+    transition: background-position 0.5s ease, background-size 0.5 ease;
 }
 
 .btn-secondary:hover:not(:disabled):not(.write-disabled) {
