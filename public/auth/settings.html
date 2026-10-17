@@ -86,8 +86,8 @@
 
         // Initialize the theme state
         await window.GoldenNotesTheme.initThemeFromUser();
-        const isLight = window.GoldenNotesTheme.isLightThemeActive();
-        const isExperimental = window.GoldenNotesTheme.isExperimentalThemeActive();
+        const isLight = window.GoldenNotesTheme.isLight();
+        const isExperimental = window.GoldenNotesTheme.isExperimental();
 
         // Update the toggle UI and status text
         toggle.checked = isLight;
