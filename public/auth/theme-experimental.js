@@ -37,7 +37,7 @@
         return global.__gnThemeSupabase;
     }
 
-    function iExperimentalThemeActive() {
+    function isExperimentalThemeActive() {
         return document.documentElement.getAttribute('data-theme') === 'experimental';
     }
 
@@ -65,7 +65,7 @@
                 return !!data['experimental-mode'];
             }
 
-            return isLightThemeActive();
+            return isExperimentalThemeActive();
         } catch (err) {
             console.error('initThemeFromUser exception:', err);
             return null;
@@ -125,7 +125,7 @@
         applyTheme,
         initThemeFromUser,
         updateThemePreference,
-        isLightThemeActive,
+        isExperimentalThemeActive,
         getClient
     };
 
