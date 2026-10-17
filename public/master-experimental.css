@@ -559,7 +559,15 @@ a:hover {
     color: var(--main-text);
     background-color: var(--deepest-background);
     background-image: linear-gradient(145deg, #f5f8f7 0%, #dce5e3 48%, #aabbb8 100%);
+    background-size: 200% 100%;
+    background-position: 0% 50%;
     background-attachment: fixed;
+    animation: experimental-gradient-drift 24s ease-in-out infinite alternate;
+}
+
+@keyframes experimental-gradient-drift {
+    from { background-position: 0% 50%; }
+    to { background-position: 100% 50%; }
 }
 
 [data-theme="experimental"] :is(h1, h2, h3, h4, h5, h6) {
@@ -664,6 +672,12 @@ a:hover {
 }
 
 @media (prefers-reduced-motion: reduce) {
+    [data-theme="experimental"] body {
+        animation: none;
+        background-position: 50% 50%;
+        background-size: 100% 100%;
+    }
+
     [data-theme="experimental"] :is(.btn, .generic_button, .effect_button, a, input, select, textarea) {
         transition-duration: 0.01ms;
     }
