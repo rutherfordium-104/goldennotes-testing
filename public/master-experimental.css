@@ -84,9 +84,9 @@
 [data-theme="experimental"] .btn-secondary {
     color: var(--main-text);
     border-color: var(--dark-glass-line);
-    background: linear-gradient(90deg, var(--primary-glass), var(--secondary-glass), var(--soft-glass));
-    background-size: 200% 100%;
-    background-position: 100% 0;
+    background: linear-gradient(180deg, var(--primary-glass), var(--secondary-glass), var(--soft-glass));
+    background-size: 100% 100%;
+    background-position: 0 0;
     transition: background-position 0.5s ease;
 }
 
