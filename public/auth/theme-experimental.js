@@ -1,48 +1,16 @@
-/**
- * GoldenNotes theme helper.
- * Persists prefer-light-mode in public.settings ("user-uuid", "prefer-light-mode").
- * Applies via document.documentElement[data-theme="light"|"dark"].
- */
 (function (global) {
-    const SUPABASE_URL = 'https://cqxlnmvmfkylozcdffxf.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxeGxubXZtZmt5bG96Y2RmZnhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3NDc4OTMsImV4cCI6MjEwNDMyMzg5M30.mpxEjcWdD9Vy0WsHRL7O8n1fWfnKInsBmOgaYsiv_38';
-    const STORAGE_KEY = 'gn-theme';
-
-    function applyTheme(isExperimental) {
-        const theme = isExperimental ? 'experimental' : 'dark';
-        document.documentElement.setAttribute('data-theme', theme);
-        try {
-            localStorage.setItem(STORAGE_KEY, theme);
-        } catch (_) { /* ignore */ }
-        return theme;
-    }
-    // Fast paint from local cache (avoids flash before auth/settings fetch)
-    (function bootstrapFromCache() {
-        try {
-            const cached = localStorage.getItem(STORAGE_KEY);
-            if (cached === 'experimental' || cached === 'dark') {
-                document.documentElement.setAttribute('data-theme', cached);
-                return;
-            }
-        } catch (_) { /* ignore */ }
-        document.documentElement.setAttribute('data-theme', 'experimental');
-    })();
-
-    function getClient() {
-        if (global.__gnThemeSupabase) return global.__gnThemeSupabase;
-        if (!global.supabase || typeof global.supabase.createClient !== 'function') {
-            return null;
-        }
-        global.__gnThemeSupabase = global.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        return global.__gnThemeSupabase;
+    const theme = global.GoldenNotesTheme;
+    if (!theme) {
+        console.error('theme.js must load before theme-experimental.js');
+        return;
     }
 
     function isExperimentalThemeActive() {
         return document.documentElement.getAttribute('data-theme') === 'experimental';
     }
 
-    async function initThemeFromUser() {
-        const client = getClient();
+    async function initExperimentalThemeFromUser() {
+        const client = theme.getClient();
         if (!client) return null;
 
         try {
@@ -60,22 +28,17 @@
                 return null;
             }
 
-            if (data && Object.prototype.hasOwnProperty.call(data, 'experimental-mode')) {
-                applyTheme(!!data['experimental-mode']);
-                return !!data['experimental-mode'];
-            }
-
-            return isExperimentalThemeActive();
+            const isExperimental = !!(data && data['experimental-mode']);
+            theme.applyExperimentalTheme(isExperimental);
+            return isExperimental;
         } catch (err) {
-            console.error('initThemeFromUser exception:', err);
+            console.error('initExperimentalThemeFromUser exception:', err);
             return null;
         }
     }
 
-    async function updateThemePreference(isExperimentalMode) {
-        applyTheme(!!isExperimentalMode);
-
-        const client = getClient();
+    async function updateExperimentalThemePreference(isExperimentalMode) {
+        const client = theme.getClient();
         if (!client) {
             return { error: new Error('Supabase client unavailable') };
         }
@@ -100,10 +63,10 @@
             }
 
             if (updated && updated.length > 0) {
+                theme.applyExperimentalTheme(!!isExperimentalMode);
                 return { data: updated[0], error: null };
             }
 
-            // No existing row — insert one for this user
             const { data: inserted, error: insertError } = await client
                 .from('settings')
                 .insert([{ 'user-uuid': user.id, 'experimental-mode': !!isExperimentalMode }])
@@ -114,69 +77,17 @@
                 return { error: insertError };
             }
 
+            theme.applyExperimentalTheme(!!isExperimentalMode);
             return { data: inserted && inserted[0], error: null };
         } catch (err) {
-            console.error('updateThemePreference exception:', err);
+            console.error('updateExperimentalThemePreference exception:', err);
             return { error: err };
         }
     }
 
-    global.GoldenNotesTheme = {
-        applyTheme,
-        initThemeFromUser,
-        updateThemePreference,
-        isExperimentalThemeActive,
-        getClient
-    };
-
-    // Shared guard: check existing/background sessions on pages that load theme.js.
-    // Supabase may still have a cached session after the server bans the account.
-    async function checkBanStatus(session) {
-        if (!session?.access_token || location.pathname.endsWith('/ban.html')) return;
-        try {
-            const response = await fetch('/auth/ban-status', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + session.access_token
-                },
-                body: '{}'
-            });
-            if (!response.ok) return;
-            const result = await response.json();
-            if (result.banned) {
-                const reason = encodeURIComponent(result.reason || 'No reason was provided.');
-                location.replace('/auth/ban.html?reason=' + reason);
-            }
-        } catch (err) {
-            console.warn('Could not verify account ban status:', err);
-        }
-    }
-
-    function installBanGuard() {
-        const client = getClient();
-        if (!client || global.__gnBanGuardInstalled) return;
-        global.__gnBanGuardInstalled = true;
-        client.auth.getSession().then(({ data, error }) => {
-            if (!error) checkBanStatus(data?.session);
-        });
-        client.auth.onAuthStateChange((event, session) => {
-            if (event !== 'INITIAL_SESSION' && session) {
-                // Defer network work until Supabase finishes its auth callback.
-                Promise.resolve().then(() => checkBanStatus(session));
-            }
-        });
-    }
-
-    function autoInit() {
-        if (!global.supabase) return;
-        initThemeFromUser();
-        installBanGuard();
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', autoInit);
-    } else {
-        autoInit();
-    }
+    Object.assign(theme, {
+        initExperimentalThemeFromUser,
+        updateExperimentalThemePreference,
+        isExperimentalThemeActive
+    });
 })(window);

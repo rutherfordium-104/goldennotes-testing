@@ -52,7 +52,7 @@
     <div class="settings-row">
             <h3>Experimental Gradient Theme</h3>
             <p>In progress.</p>
-        <label class="theme-toggle-experimental" aria-label="Experimental mode">
+        <label class="theme-toggle" aria-label="Experimental mode">
             <input type="checkbox" id="experimental-mode" role="switch">
             <span class="slider"></span>
         </label>
@@ -68,77 +68,78 @@
 <script>
     document.addEventListener('DOMContentLoaded', async () => {
         const toggle = document.getElementById('prefer-light-mode');
-        const experimental_theme = document.getElementById('experimental-mode');
+        const experimentalToggle = document.getElementById('experimental-mode');
         const status = document.getElementById('settings-status');
+        const theme = window.GoldenNotesTheme;
 
-        const client = window.GoldenNotesTheme.getClient();
+        const client = theme.getClient();
         if (!client) {
             status.textContent = 'Supabase unavailable.';
             return;
         }
 
-        const { data: { user } } = await client.auth.getUser();
-        if (!user) {
-            status.textContent = 'Please log in to sync theme preferences.';
-            window.location.href = '/login';
+        try {
+            const { data, error } = await client.auth.getUser();
+            if (error) {
+                status.textContent = 'Could not verify your account: ' + error.message;
+                return;
+            }
+            if (!data.user) {
+                status.textContent = 'Please log in to sync theme preferences.';
+                window.location.href = '/login';
+                return;
+            }
+
+            const lightPreference = await theme.initThemeFromUser();
+            const experimentalPreference = await theme.initExperimentalThemeFromUser();
+            if (lightPreference === null || experimentalPreference === null) {
+                status.textContent = 'Could not load theme preferences.';
+                return;
+            }
+
+            toggle.checked = lightPreference;
+            experimentalToggle.checked = experimentalPreference;
+            status.textContent = 'Theme preferences loaded.';
+        } catch (error) {
+            status.textContent = 'Could not load preferences: ' + (error.message || error);
             return;
         }
 
-        // Initialize the theme state
-        await window.GoldenNotesTheme.initThemeFromUser();
-
-        const isLight = window.GoldenNotesTheme.isLightThemeActive();
-
-        const isExperimental = window.GoldenNotesTheme.isExperimentalThemeActive();
-
-        // Update the toggle UI and status text
-        toggle.checked = isLight;
-        status.textContent = isLight ? 'Light mode is on.' : 'Dark mode is on.';
-
         let saving = false;
-
-        async function setTheme(isLightMode) {
+        async function savePreference(input, value, update, label) {
             if (saving) return;
             saving = true;
+            toggle.disabled = true;
+            experimentalToggle.disabled = true;
             status.textContent = 'Saving…';
 
-            toggle.checked = isLightMode;
-
-            // Attempt to update preference in Supabase via your theme.js method
-            const { error } = await window.GoldenNotesTheme.updateThemePreference(isLightMode);
-
-            if (error) {
+            try {
+                const { error } = await update(value);
+                if (error) {
+                    input.checked = !value;
+                    status.textContent = 'Could not save preference: ' + (error.message || error);
+                } else {
+                    status.textContent = label + ' saved.';
+                }
+            } catch (error) {
+                input.checked = !value;
                 status.textContent = 'Could not save preference: ' + (error.message || error);
-            } else {
-                status.textContent = (isLightMode ? 'Light mode' : 'Dark mode') + ' saved.';
+            } finally {
+                saving = false;
+                toggle.disabled = false;
+                experimentalToggle.disabled = false;
             }
-            saving = false;
         }
 
-        toggle.addEventListener('change', () => setTheme(toggle.checked));
-
-        toggle.checked = isExperimental;
-        status.textContent = isExperimental ? 'Experimental theme mode on.' : 'Theme toggled off.';
-
-         async function setTheme(isExperimentalMode) {
-            if (saving) return;
-            saving = true;
-            status.textContent = 'Saving…';
-
-            experimental_theme.checked = isExperimentalMode;
-
-            // Attempt to update preference in Supabase via your theme.js method
-            const { error } = await window.GoldenNotesTheme.updateThemePreference(isExperimentalMode);
-
-            if (error) {
-                status.textContent = 'Could not save preference: ' + (error.message || error);
-            } else {
-                status.textContent = (isExperimentalMode ? 'Experimental Mode' : 'Toggled off') + ' saved.';
-            }
-            saving = false;
-        }
-        // Listen for changes on the slider toggle
-        experimental_theme.addEventListener('change', () => setTheme(experimental_theme.checked));
+        toggle.addEventListener('change', () => {
+            savePreference(toggle, toggle.checked, theme.updateThemePreference,
+                toggle.checked ? 'Light mode' : 'Dark mode');
+        });
+        experimentalToggle.addEventListener('change', () => {
+            savePreference(experimentalToggle, experimentalToggle.checked,
+                theme.updateExperimentalThemePreference,
+                experimentalToggle.checked ? 'Experimental mode' : 'Experimental mode disabled');
+        });
     });
 </script>
 </body>

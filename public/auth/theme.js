@@ -7,24 +7,41 @@
     const SUPABASE_URL = 'https://cqxlnmvmfkylozcdffxf.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxeGxubXZtZmt5bG96Y2RmZnhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3NDc4OTMsImV4cCI6MjEwNDMyMzg5M30.mpxEjcWdD9Vy0WsHRL7O8n1fWfnKInsBmOgaYsiv_38';
     const STORAGE_KEY = 'gn-theme';
+    let lightMode = true;
+    let experimentalMode = false;
 
     function applyTheme(isLight) {
+        lightMode = !!isLight;
         const theme = isLight ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', theme);
+        if (!experimentalMode) {
+            document.documentElement.setAttribute('data-theme', theme);
+        }
         try {
             localStorage.setItem(STORAGE_KEY, theme);
         } catch (_) { /* ignore */ }
-        return theme;
+        return experimentalMode ? 'experimental' : theme;
+    }
+
+    function applyExperimentalTheme(isExperimental) {
+        experimentalMode = !!isExperimental;
+        if (experimentalMode) {
+            document.documentElement.setAttribute('data-theme', 'experimental');
+        } else {
+            applyTheme(lightMode);
+        }
+        return experimentalMode;
     }
     // Fast paint from local cache (avoids flash before auth/settings fetch)
     (function bootstrapFromCache() {
         try {
             const cached = localStorage.getItem(STORAGE_KEY);
             if (cached === 'light' || cached === 'dark') {
+                lightMode = cached === 'light';
                 document.documentElement.setAttribute('data-theme', cached);
                 return;
             }
         } catch (_) { /* ignore */ }
+        lightMode = true;
         document.documentElement.setAttribute('data-theme', 'light');
     })();
 
@@ -38,7 +55,7 @@
     }
 
     function isLightThemeActive() {
-        return document.documentElement.getAttribute('data-theme') === 'light';
+        return lightMode;
     }
 
     async function initThemeFromUser() {
@@ -73,8 +90,6 @@
     }
 
     async function updateThemePreference(isLightMode) {
-        applyTheme(!!isLightMode);
-
         const client = getClient();
         if (!client) {
             return { error: new Error('Supabase client unavailable') };
@@ -100,6 +115,7 @@
             }
 
             if (updated && updated.length > 0) {
+                applyTheme(!!isLightMode);
                 return { data: updated[0], error: null };
             }
 
@@ -114,6 +130,7 @@
                 return { error: insertError };
             }
 
+            applyTheme(!!isLightMode);
             return { data: inserted && inserted[0], error: null };
         } catch (err) {
             console.error('updateThemePreference exception:', err);
@@ -123,6 +140,7 @@
 
     global.GoldenNotesTheme = {
         applyTheme,
+        applyExperimentalTheme,
         initThemeFromUser,
         updateThemePreference,
         isLightThemeActive,
