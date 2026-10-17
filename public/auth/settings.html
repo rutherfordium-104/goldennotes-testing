@@ -86,8 +86,8 @@
 
         // Initialize the theme state
         await window.GoldenNotesTheme.initThemeFromUser();
-        const isLight = window.GoldenNotesTheme.isLight();
-        const isExperimental = window.GoldenNotesTheme.isExperimental();
+        const isLight = window.GoldenNotesTheme.isLightThemeActive();
+        const isExperimental = window.GoldenNotesTheme.isExperimentalThemeActive();
 
         // Update the toggle UI and status text
         toggle.checked = isLight;
@@ -123,7 +123,7 @@
             saving = true;
             status.textContent = 'Saving…';
 
-            toggle.checked = isExperimentalMode;
+            experimental_theme.checked = isExperimentalMode;
 
             // Attempt to update preference in Supabase via your theme.js method
             const { error } = await window.GoldenNotesTheme.updateThemePreference(isExperimentalMode);
@@ -131,7 +131,7 @@
             if (error) {
                 status.textContent = 'Could not save preference: ' + (error.message || error);
             } else {
-                status.textContent = (isLightMode ? 'Experimental Mode' : 'Toggled off') + ' saved.';
+                status.textContent = (isExperimentalMode ? 'Experimental Mode' : 'Toggled off') + ' saved.';
             }
             saving = false;
         }
