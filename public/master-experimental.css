@@ -1,6 +1,10 @@
 [data-theme="experimental"] {
     color-scheme: experimental;
 
+    --display-font: 'Montserrat', font-weight: bold;
+    --body-font: 'Montserrat', Arial, sans-serif;
+    --mono-font: 'IBM Plex Mono', 'Courier New', monospace;
+
     --deepest-background: #f3f5f8;
     --primary-navy: #ffffff;
     --secondary-navy: #e8eef6;
