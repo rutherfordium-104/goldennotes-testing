@@ -7,6 +7,7 @@
     const SUPABASE_URL = 'https://cqxlnmvmfkylozcdffxf.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxeGxubXZtZmt5bG96Y2RmZnhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3NDc4OTMsImV4cCI6MjEwNDMyMzg5M30.mpxEjcWdD9Vy0WsHRL7O8n1fWfnKInsBmOgaYsiv_38';
     const STORAGE_KEY = 'gn-theme';
+    const EXPERIMENTAL_STORAGE_KEY = 'gn-experimental-theme';
     let lightMode = true;
     let experimentalMode = false;
 
@@ -24,6 +25,9 @@
 
     function applyExperimentalTheme(isExperimental) {
         experimentalMode = !!isExperimental;
+        try {
+            localStorage.setItem(EXPERIMENTAL_STORAGE_KEY, String(experimentalMode));
+        } catch (_) { /* ignore */ }
         if (experimentalMode) {
             document.documentElement.setAttribute('data-theme', 'experimental');
         } else {
@@ -35,14 +39,13 @@
     (function bootstrapFromCache() {
         try {
             const cached = localStorage.getItem(STORAGE_KEY);
-            if (cached === 'light' || cached === 'dark') {
-                lightMode = cached === 'light';
-                document.documentElement.setAttribute('data-theme', cached);
-                return;
-            }
+            lightMode = cached !== 'dark';
+            experimentalMode = localStorage.getItem(EXPERIMENTAL_STORAGE_KEY) === 'true';
         } catch (_) { /* ignore */ }
-        lightMode = true;
-        document.documentElement.setAttribute('data-theme', 'light');
+        document.documentElement.setAttribute(
+            'data-theme',
+            experimentalMode ? 'experimental' : lightMode ? 'light' : 'dark'
+        );
     })();
 
     function getClient() {
