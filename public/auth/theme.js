@@ -1,7 +1,7 @@
 /**
  * GoldenNotes theme helper.
  * Persists prefer-light-mode in public.settings ("user-uuid", "prefer-light-mode").
- * Applies via document.documentElement[data-theme="light"|"dark"].
+ * Applies via document.documentElement[data-theme="light"|"dark"|"experimental"].
  */
 (function (global) {
     const SUPABASE_URL = 'https://cqxlnmvmfkylozcdffxf.supabase.co';
@@ -68,7 +68,7 @@
 
             const { data, error } = await client
                 .from('settings')
-                .select('prefer-light-mode')
+                .select('prefer-light-mode, experimental-mode')
                 .eq('user-uuid', user.id)
                 .maybeSingle();
 
@@ -79,7 +79,10 @@
 
             if (data && Object.prototype.hasOwnProperty.call(data, 'prefer-light-mode')) {
                 applyTheme(!!data['prefer-light-mode']);
-                return !!data['prefer-light-mode'];
+            }
+
+            if (data && Object.prototype.hasOwnProperty.call(data, 'experimental-mode')) {
+                applyExperimentalTheme(!!data['experimental-mode']);
             }
 
             return isLightThemeActive();
