@@ -152,52 +152,63 @@ a:hover {
 .btn:disabled,
 .btn.write-disabled,
 .write-disabled {
-    background: linear-gradient(180deg, var(--primary-glass), var(--secondary-glass), var(--soft-glass)) !important;
-    background-size: 200% 100% !important;
-    background-position: 100% 0 !important;
-    transition: background-position 0.5s ease !important;
+    background: linear-gradient(180deg, var(--soft-glass), var(--dark-glass));
+    background-size: 100%, 100%;
+    background-position: 0, 0;
     color: var(--muted-text) !important;
     border-color: var(--strong-line) !important;
     cursor: not-allowed !important;
     transform: none !important;
     box-shadow: none !important;
     opacity: 0.75;
-
-
 }
 
 .btn-primary {
-    background-color: var(--main-gold);
+    background: linear-gradient(180deg, var(--primary-glass), var(--secondary-glass), var(--soft-glass));
+    background-size: 200% 100%;
+    background-position: 0% 0;
+    transition: background-position 0.5s ease;
     color: var(--deepest-background);
-    border-color: var(--dark-glass-line);
+    border-color: var(--glass-line);
 }
 
 .btn-primary:hover:not(:disabled):not(.write-disabled) {
-    background-color: var(--light-gold);
-    border-color: var(--main-gold);
-    box-shadow: 0 5px 16px rgba(217, 164, 65, 0.18);
+    background: linear-gradient(180deg, var(--secondary-glass), var(--soft-glass), var(--dark-glass));
+    background-size: 200% 100%;
+    background-position: 0% 0;
+    border-color: var(--dark-glass-line);
+    box-shadow: 0 5px 16px rgba(5, 28, 73, 0.18);
     color: var(--deepest-background);
 }
 
 .btn-primary:active:not(:disabled) {
+    background: linear-gradient(180deg, var(--primary-glass), var(--secondary-glass), var(--soft-glass));
+    background-size: 200% 200%;
+    background-position: 0% 0;
     transform: translateY(0);
-    background-color: var(--main-gold);
     box-shadow: none;
 }
 
 .btn-secondary {
-    background-color: var(--primary-navy);
+    background: linear-gradient(180deg, var(--primary-glass), var(--secondary-glass), var(--soft-glass));
+    background-size: 100% 100%;
+    background-position: 0% 0;
     color: var(--main-text);
-    border-color: var(--strong-line);
+    border-color: var(--glass-line);
 }
 
 .btn-secondary:hover:not(:disabled):not(.write-disabled) {
-    background-color: var(--secondary-navy);
-    color: var(--light-gold);
-    border-color: var(--main-gold);
+    background: linear-gradient(180deg, var(--primary-glass), var(--secondary-glass));
+    background-size: 200% 200%;
+    background-position: 25% 0;
+    color: var(--main-text);
+    border-color: var(--glass-line);
 }
 
 .btn-secondary:active:not(:disabled) {
+    background: linear-gradient(180deg, var(--primary-glass), var(--secondary-glass), var(--soft-glass));
+    background-size: 255% 255%;
+    background-position: 100% 0;
     transform: translateY(0);
     background-color: var(--primary-navy);
     color: var(--main-gold);
@@ -206,7 +217,7 @@ a:hover {
 .btn-outline {
     background-color: transparent;
     color: var(--main-text);
-    border-color: var(--strong-line);
+    border-color: var(--glass-line);
 }
 
 .btn-outline:hover:not(:disabled) {
