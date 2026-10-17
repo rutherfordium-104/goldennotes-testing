@@ -113,6 +113,8 @@
             saving = false;
         }
 
+        toggle.addEventListener('change', () => setTheme(toggle.checked));
+
         toggle.checked = isExperimental;
         status.textContent = isExperimental ? 'Experimental theme mode on.' : 'Theme toggled off.';
 
@@ -134,7 +136,7 @@
             saving = false;
         }
         // Listen for changes on the slider toggle
-        toggle.addEventListener('change', () => setTheme(toggle.checked));
+        experimental_theme.addEventListener('change', () => setTheme(experimental_theme.checked));
     });
 </script>
 </body>
