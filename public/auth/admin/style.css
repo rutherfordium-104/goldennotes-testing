@@ -65,3 +65,7 @@ table tbody button { color: #172033; }
   .content-management-row a { margin: .2rem .2rem .2rem 0; }
   #user-list table { min-width: 600px; }
 }
+.admin-form {
+  column-gap: 5px;
+  row-gap: 5px;
+}
