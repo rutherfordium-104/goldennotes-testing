@@ -36,7 +36,7 @@ body{min-height:100vh;display:grid;place-items:center;padding:24px;background:va
 <script>
 (() => {
  const URL='https://cqxlnmvmfkylozcdffxf.supabase.co';
- const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZWYiOiJjcXhsbm12bWZreWxvemNkZmZ4ZiIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzg4NzQ3ODkzLCJleHAiOjIxMDQzMjM4OTN9.mpxEjcWdD9Vy0WsHRL7O8n1fWfnKInsBmOgaYsiv_38';
+ const KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyZWYiOiJjcXhsbm12bWZreWxvemNkZmZ4ZiIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzg4NzQ3ODkzLCJleHAiOjIxMDQzMjM4OTN9.mpxEjcWdD9Vy0WsHRL7O8n1fWfnKInsBmOgaYsiv_38';
  // Use the project's public anon key; never expose a service-role key in browser code.
  const client=window.supabase.createClient(URL, KEY);
  const form=document.getElementById('phone-form'), phone=document.getElementById('phone'), code=document.getElementById('code');
