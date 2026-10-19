@@ -21,8 +21,9 @@ body{min-height:100vh;display:grid;place-items:center;padding:24px;background:va
 <h1>Verify your phone number</h1>
 <p>GoldenNotes requires a verified phone number for account security. Enter a number you control and we’ll send you a six-digit SMS code.</p>
 <form id="phone-form">
-<label for="phone">Phone number (include country code)</label>
-<input id="phone" name="phone" type="tel" autocomplete="tel" placeholder="+639XXXXXXXXX" required pattern="\\+[1-9][0-9]{7,14}">
+<label for="phone">Philippine mobile number</label>
+<input id="phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="09XX XXX XXXX" required maxlength="16" aria-describedby="phone-hint">
+<p class="hint" id="phone-hint">Enter your usual 11-digit number, starting with 09. GoldenNotes will add +63 automatically.</p>
 <button type="submit" id="send-code">Send verification code</button>
 <div id="code-area" hidden>
 <label for="code">Six-digit verification code</label>
@@ -55,13 +56,18 @@ body{min-height:100vh;display:grid;place-items:center;padding:24px;background:va
  form.addEventListener('submit',async e=>{
    e.preventDefault();
    if(!await requireSession())return;
-   const value=phone.value.trim();
-   if(!/^\\+[1-9][0-9]{7,14}$/.test(value)){message('Use international format, for example +639XXXXXXXXX.',true);return}
+   const raw=phone.value.trim();
+   const digits=raw.replace(/\D/g,'');
+   let normalized='';
+   if(/^09\d{9}$/.test(digits)) normalized='+63'+digits.slice(1);
+   else if(/^9\d{9}$/.test(digits)) normalized='+63'+digits;
+   else if(/^639\d{9}$/.test(digits)) normalized='+'+digits;
+   if(!normalized || !/^\+639\d{9}$/.test(normalized)){message('Enter a valid Philippine mobile number, such as 0917 123 4567.',true);return}
    sendButton.disabled=true;
    try{
-     const {error}=await client.auth.updateUser({phone:value});
+     const {error}=await client.auth.updateUser({phone:normalized});
      if(error)throw error;
-     pendingPhone=value;codeArea.hidden=false;code.focus();
+     pendingPhone=normalized;phone.value=normalized;codeArea.hidden=false;code.focus();
      message('Code requested. Check your SMS messages.');
    }catch(err){message('Could not send code: '+err.message,true)}
    finally{sendButton.disabled=false}
