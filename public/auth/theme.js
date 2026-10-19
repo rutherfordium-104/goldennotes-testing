@@ -162,6 +162,10 @@
         try {
             const { data, error } = await getClient().auth.getUser(session.access_token);
             if (error || !data?.user) return;
+            if (data.user.user_metadata?.password_reset_required && path !== '/auth/password-change.html') {
+                location.replace('/auth/password-change.html');
+                return;
+            }
             if (!data.user.phone_confirmed_at) {
                 try {
                     if (!sessionStorage.getItem('gn-phone-setup-notice')) {
