@@ -530,8 +530,8 @@ app.post("/developers/post", async (req, res) => {
 
         // Privileged account recovery command. Never accept a password from the caller;
         // generate a high-entropy temporary password and require the user to change it.
-        const passwordResetMatch = command.match(/^password\\s+reset\\s+([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i);
-        if (/^password\\s+reset\\b/i.test(command)) {
+        const passwordResetMatch = command.match(/^password\s+reset\s+([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i);
+        if (/^password\s+reset\b/i.test(command)) {
             if (!passwordResetMatch) {
                 output = "Usage: password reset <user-id>";
             } else if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -558,7 +558,9 @@ app.post("/developers/post", async (req, res) => {
         }
 
         // 4. Handle Shell Execution or Internal Commands
-        if (typeof output === "string") {\n            // A command handled above has already produced its output.\n        } else if (command.startsWith("bash ")) {
+        if (typeof output === "string") {
+            // A command handled above has already produced its output.
+        } else if (command.startsWith("bash ")) {
             const bashCmd = command.substring(5).trim();
             if (!bashCmd) {
                 output = "Error: Blank command. Usage: 'bash <command>'";
