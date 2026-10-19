@@ -208,6 +208,7 @@
         </div>
 
         <button type="submit" id="submit-btn" class="btn btn-primary login-btn">Sign In</button>
+        <button type="button" id="google-signin-btn" class="btn btn-secondary login-btn" style="margin-top:12px;">Continue with Google (account recovery)</button>
         <div class="spacer"></div>
     </form>
     <button onclick="history.back()" class="btn generic_button">Go Back</button>
@@ -228,6 +229,22 @@
         const passwordInput = document.getElementById('password');
         const submitBtn = document.getElementById('submit-btn');
         const errorBox = document.getElementById('error-box');
+        const googleButton = document.getElementById('google-signin-btn');
+
+        googleButton?.addEventListener('click', async () => {
+            googleButton.disabled = true;
+            googleButton.textContent = 'Connecting to Google...';
+            const { error } = await supabaseClient.auth.signInWithOAuth({
+                provider: 'google',
+                options: { redirectTo: window.location.origin + '/dashboard' }
+            });
+            if (error) {
+                errorBox.textContent = 'Google sign-in failed: ' + error.message;
+                errorBox.style.display = 'block';
+                googleButton.disabled = false;
+                googleButton.textContent = 'Continue with Google (account recovery)';
+            }
+        });
 
         if (!loginForm) return;
 
