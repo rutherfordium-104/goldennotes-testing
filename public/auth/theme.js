@@ -153,6 +153,45 @@
         getClient
     };
 
+    // Require verified phone numbers for signed-in users across pages using this shared script.
+    // Phone OTP delivery must be enabled in the Supabase project's Auth phone provider.
+    async function enforcePhoneVerification(session) {
+        const path = location.pathname;
+        const exempt = ['/auth/phone-setup.html', '/login', '/login.html', '/signup'];
+        if (!session?.access_token || exempt.includes(path) || path.startsWith('/auth/phone-setup')) return;
+        try {
+            const { data, error } = await getClient().auth.getUser(session.access_token);
+            if (error || !data?.user) return;
+            if (!data.user.phone_confirmed_at) {
+                try {
+                    if (!sessionStorage.getItem('gn-phone-setup-notice')) {
+                        sessionStorage.setItem('gn-phone-setup-notice', 'shown');
+                        alert('Please verify your phone number to continue using GoldenNotes. You will be redirected to phone setup.');
+                    }
+                } catch (_) { /* session storage may be disabled */ }
+                location.replace('/auth/phone-setup.html');
+            } else {
+                try { sessionStorage.removeItem('gn-phone-setup-notice'); } catch (_) {}
+            }
+        } catch (err) {
+            console.warn('Could not verify phone setup status:', err);
+        }
+    }
+
+    function installPhoneVerificationGuard() {
+        const client = getClient();
+        if (!client || global.__gnPhoneGuardInstalled) return;
+        global.__gnPhoneGuardInstalled = true;
+        client.auth.getSession().then(({ data, error }) => {
+            if (!error) enforcePhoneVerification(data?.session);
+        });
+        client.auth.onAuthStateChange((event, session) => {
+            if (event !== 'INITIAL_SESSION' && session) {
+                Promise.resolve().then(() => enforcePhoneVerification(session));
+            }
+        });
+    }
+
     // Shared guard: check existing/background sessions on pages that load theme.js.
     // Supabase may still have a cached session after the server bans the account.
     async function checkBanStatus(session) {
@@ -196,6 +235,7 @@
         if (!global.supabase) return;
         initThemeFromUser();
         installBanGuard();
+        installPhoneVerificationGuard();
     }
 
     if (document.readyState === 'loading') {
