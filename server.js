@@ -6,6 +6,7 @@ const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const { execSync } = require("child_process");
+const crypto = require("crypto");
 const { createClient } = require("@supabase/supabase-js"); // 1. Import createClient
 
 const SUPABASE_URL = 'https://cqxlnmvmfkylozcdffxf.supabase.co';
@@ -527,8 +528,37 @@ app.post("/developers/post", async (req, res) => {
 
         let output;
 
+        // Privileged account recovery command. Never accept a password from the caller;
+        // generate a high-entropy temporary password and require the user to change it.
+        const passwordResetMatch = command.match(/^password\\s+reset\\s+([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i);
+        if (/^password\\s+reset\\b/i.test(command)) {
+            if (!passwordResetMatch) {
+                output = "Usage: password reset <user-id>";
+            } else if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+                output = "Error: SUPABASE_SERVICE_ROLE_KEY is not configured on the server.";
+            } else {
+                const targetId = passwordResetMatch[1];
+                const { data: targetData, error: targetLookupError } = await supabaseAdmin.auth.admin.getUserById(targetId);
+                if (targetLookupError || !targetData?.user) {
+                    output = "Error: User not found.";
+                } else {
+                    const temporaryPassword = crypto.randomBytes(18).toString("base64url") + "aA1!";
+                    const { error: resetError } = await supabaseAdmin.auth.admin.updateUserById(targetId, {
+                        password: temporaryPassword,
+                        user_metadata: { ...(targetData.user.user_metadata || {}), password_reset_required: true }
+                    });
+                    if (resetError) {
+                        console.error("[dev/password-reset] Reset failed:", resetError.message);
+                        output = "Error: Supabase could not reset this user's password.";
+                    } else {
+                        output = "Temporary password set for user " + targetId + ". Share it with the user privately; they should change it immediately after signing in.\nTemporary password: " + temporaryPassword;
+                    }
+                }
+            }
+        }
+
         // 4. Handle Shell Execution or Internal Commands
-        if (command.startsWith("bash ")) {
+        if (typeof output === "string") {\n            // A command handled above has already produced its output.\n        } else if (command.startsWith("bash ")) {
             const bashCmd = command.substring(5).trim();
             if (!bashCmd) {
                 output = "Error: Blank command. Usage: 'bash <command>'";
