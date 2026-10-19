@@ -230,6 +230,32 @@
                 showError("Failed to load events: " + error.message);
             }
 
+            // One desktop notification per local calendar day, summarizing all events due today.
+            // This runs while the calendar page is open; true closed-browser push requires Web Push/VAPID setup.
+            try {
+                const now = new Date();
+                const localDate = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
+                const todaysEvents = (eventsData || []).filter(item => String(item.event_date || '').slice(0, 10) === localDate);
+                const notificationKey = 'gn-calendar-notification:' + localDate;
+                if (todaysEvents.length && !localStorage.getItem(notificationKey) && 'Notification' in window) {
+                    let permission = Notification.permission;
+                    if (permission === 'default') permission = await Notification.requestPermission();
+                    if (permission === 'granted') {
+                        const titles = todaysEvents.slice(0, 3).map(item => item.title || 'Untitled event');
+                        const more = todaysEvents.length > 3 ? ' and ' + (todaysEvents.length - 3) + ' more' : '';
+                        const body = titles.join(', ') + more;
+                        new Notification('GoldenNotes — today’s calendar', {
+                            body,
+                            tag: 'gnotes-calendar-' + localDate,
+                            icon: '/favicon.jpeg'
+                        });
+                        localStorage.setItem(notificationKey, 'sent');
+                    }
+                }
+            } catch (notificationError) {
+                console.warn('Calendar notification unavailable:', notificationError);
+            }
+
             const formattedEvents = (eventsData || []).map(item => ({
                 id: item.id,
                 title: item.title,
