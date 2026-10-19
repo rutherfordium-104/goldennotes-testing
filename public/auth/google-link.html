@@ -32,17 +32,19 @@ button:disabled{opacity:.65;cursor:wait}#status{margin-top:14px;white-space:pre-
   const linkButton = document.getElementById('link-google');
   const signoutButton = document.getElementById('signout');
   const status = document.getElementById('status');
+  let alreadyLinked = false;
   function show(text, error=false) { status.textContent=text; status.style.color=error?'#f85149':'#3fb950'; }
   async function inspectAccount() {
     const {data:{session},error:sessionError}=await client.auth.getSession();
     if(sessionError || !session) { show('Please sign in to your GoldenNotes account first.',true); linkButton.disabled=true; return; }
     const {data:{user},error}=await client.auth.getUser();
     if(error || !user) { show('Could not read your signed-in account. Please sign in again.',true); return; }
-    const linked=Array.isArray(user.identities)&&user.identities.some(identity=>identity.provider==='google');
-    if(linked) { show('A Google account is already linked to this GoldenNotes account. You can continue to your dashboard.'); linkButton.textContent='Continue to dashboard'; linkButton.disabled=false; linkButton.onclick=()=>location.replace('/dashboard'); }
+    alreadyLinked=Array.isArray(user.identities)&&user.identities.some(identity=>identity.provider==='google');
+    if(alreadyLinked) { show('A Google account is already linked to this GoldenNotes account. You can continue to your dashboard.'); linkButton.textContent='Continue to dashboard'; linkButton.disabled=false; }
     else { show('You are signed in. Link your backup Google account to continue.'); }
   }
   linkButton.addEventListener('click',async()=>{
+    if(alreadyLinked) { location.replace('/dashboard'); return; }
     const {data:{session}}=await client.auth.getSession();
     if(!session) { show('Please sign in to GoldenNotes first.',true); return; }
     linkButton.disabled=true; linkButton.textContent='Opening Google...';
