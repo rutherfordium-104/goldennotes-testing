@@ -153,12 +153,11 @@
         getClient
     };
 
-    // Require verified phone numbers for signed-in users across pages using this shared script.
-    // Phone OTP delivery must be enabled in the Supabase project's Auth phone provider.
-    async function enforcePhoneVerification(session) {
+    // Require a linked Google identity so users have a recovery sign-in method.
+    async function enforceGoogleLink(session) {
         const path = location.pathname;
-        const exempt = ['/auth/phone-setup.html', '/login', '/login.html', '/signup'];
-        if (!session?.access_token || exempt.includes(path) || path.startsWith('/auth/phone-setup')) return;
+        const exempt = ['/auth/google-link.html', '/auth/phone-setup.html', '/login', '/login.html', '/signup'];
+        if (!session?.access_token || exempt.includes(path) || path.startsWith('/auth/google-link')) return;
         try {
             const { data, error } = await getClient().auth.getUser(session.access_token);
             if (error || !data?.user) return;
@@ -166,32 +165,33 @@
                 location.replace('/auth/password-change.html');
                 return;
             }
-            if (!data.user.phone_confirmed_at) {
+            const hasGoogleIdentity = Array.isArray(data.user.identities) && data.user.identities.some(identity => identity.provider === 'google');
+            if (!hasGoogleIdentity) {
                 try {
-                    if (!sessionStorage.getItem('gn-phone-setup-notice')) {
-                        sessionStorage.setItem('gn-phone-setup-notice', 'shown');
-                        alert('Please verify your phone number to continue using GoldenNotes. You will be redirected to phone setup.');
+                    if (!sessionStorage.getItem('gn-google-link-notice')) {
+                        sessionStorage.setItem('gn-google-link-notice', 'shown');
+                        alert('Link a secondary Google account to secure your GoldenNotes account and enable account recovery.');
                     }
                 } catch (_) { /* session storage may be disabled */ }
-                location.replace('/auth/phone-setup.html');
+                location.replace('/auth/google-link.html');
             } else {
-                try { sessionStorage.removeItem('gn-phone-setup-notice'); } catch (_) {}
+                try { sessionStorage.removeItem('gn-google-link-notice'); } catch (_) {}
             }
         } catch (err) {
-            console.warn('Could not verify phone setup status:', err);
+            console.warn('Could not verify Google-link status:', err);
         }
     }
 
-    function installPhoneVerificationGuard() {
+    function installGoogleLinkGuard() {
         const client = getClient();
-        if (!client || global.__gnPhoneGuardInstalled) return;
-        global.__gnPhoneGuardInstalled = true;
+        if (!client || global.__gnGoogleLinkGuardInstalled) return;
+        global.__gnGoogleLinkGuardInstalled = true;
         client.auth.getSession().then(({ data, error }) => {
-            if (!error) enforcePhoneVerification(data?.session);
+            if (!error) enforceGoogleLink(data?.session);
         });
         client.auth.onAuthStateChange((event, session) => {
             if (event !== 'INITIAL_SESSION' && session) {
-                Promise.resolve().then(() => enforcePhoneVerification(session));
+                Promise.resolve().then(() => enforceGoogleLink(session));
             }
         });
     }
@@ -239,7 +239,7 @@
         if (!global.supabase) return;
         initThemeFromUser();
         installBanGuard();
-        installPhoneVerificationGuard();
+        installGoogleLinkGuard();
     }
 
     if (document.readyState === 'loading') {
