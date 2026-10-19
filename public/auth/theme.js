@@ -156,7 +156,7 @@
     // Require a linked Google identity so users have a recovery sign-in method.
     async function enforceGoogleLink(session) {
         const path = location.pathname;
-        const exempt = ['/auth/google-link.html', '/auth/phone-setup.html', '/login', '/login.html', '/signup'];
+        const exempt = ['/auth/google-link.html', '/auth/phone-setup.html', '/auth/login.html', '/auth/signup.html', '/login', '/login.html', '/signup'];
         if (!session?.access_token || exempt.includes(path) || path.startsWith('/auth/google-link')) return;
         try {
             const { data, error } = await getClient().auth.getUser(session.access_token);
